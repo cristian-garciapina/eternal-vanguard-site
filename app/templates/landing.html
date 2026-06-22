@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Eternal Vanguard — Kingdom {{ kingdom }}{% endblock %}
+
+{% block content %}
+<section class="max-w-7xl mx-auto px-6 pt-24 pb-16">
+  <p class="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+    Kingdom {{ kingdom }} · Season 12
+  </p>
+  <h1 class="font-display text-6xl md:text-7xl mt-4 leading-[1.05]">
+    Order kept,<br />
+    <span class="text-gold">unbroken.</span>
+  </h1>
+  <p class="text-secondary max-w-xl mt-8 text-lg leading-relaxed">
+    The {{ alliance_name }} alliance operations hub. Member analytics, season scoring,
+    and recruitment — gathered in one place, kept current.
+  </p>
+
+  <div class="mt-10 flex flex-wrap gap-4">
+    <a href="/dashboard"
+       class="px-6 py-3 bg-cyan-500 text-slate-950 font-medium rounded hover:bg-cyan-400 transition-colors">
+      Open dashboard
+    </a>
+    <a href="#"
+       class="px-6 py-3 border border-edge rounded text-secondary hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+      Apply to join
+    </a>
+  </div>
+</section>
+
+<div class="signet max-w-7xl mx-auto"></div>
+
+<section class="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 md:grid-cols-3 gap-4">
+  <article class="bg-card border border-edge rounded p-6">
+    <p class="font-mono text-xs uppercase tracking-widest text-muted">Members</p>
+    <p class="font-display text-5xl mt-3">142</p>
+    <p class="text-secondary text-sm mt-2">Active across the kingdom.</p>
+  </article>
+  <article class="bg-card border border-edge rounded p-6">
+    <p class="font-mono text-xs uppercase tracking-widest text-muted">Season</p>
+    <p class="font-display text-5xl mt-3 text-gold">S12</p>
+    <p class="text-secondary text-sm mt-2">Currently ongoing.</p>
+  </article>
+  <article class="bg-card border border-edge rounded p-6">
+    <p class="font-mono text-xs uppercase tracking-widest text-muted">Founded</p>
+    <p class="font-display text-5xl mt-3">2024</p>
+    <p class="text-secondary text-sm mt-2">Renamed from Ad Infernum.</p>
+  </article>
+</section>
+{% endblock %}

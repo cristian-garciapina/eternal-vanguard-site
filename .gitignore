@@ -1,0 +1,37 @@
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Project data (PII of alliance members — never committed) -------------
+data/*.xlsx
+data/*.csv
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# --- Secrets --------------------------------------------------------------
+.env
+.env.local
+*.pem
+*.key
+
+# --- Logs -----------------------------------------------------------------
+*.log
+logs/
+
+# --- Editors & OS ---------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · Eternal Vanguard{% endblock %}
+
+{% block content %}
+<section class="max-w-7xl mx-auto px-6 pt-12 pb-6">
+  <p class="font-mono text-xs uppercase tracking-[0.3em] text-muted">Alliance overview</p>
+  <h1 class="font-display text-4xl mt-3">Dashboard</h1>
+  <p class="text-secondary mt-2 max-w-2xl">
+    Live snapshot of {{ stats.total_members if stats else "the alliance" }}'s strength
+    and contribution. Numbers refresh as new exports are ingested.
+  </p>
+</section>
+
+<div class="signet max-w-7xl mx-auto my-8"></div>
+
+<!-- Stat cards ------------------------------------------------------------ -->
+<section class="max-w-7xl mx-auto px-6 grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+  <article class="bg-card border border-edge rounded p-5">
+    <p class="font-mono text-xs uppercase tracking-widest text-muted">Total members</p>
+    <p class="font-display text-4xl mt-3">{{ stats.total_members }}</p>
+  </article>
+  <article class="bg-card border border-edge rounded p-5">
+    <p class="font-mono text-xs uppercase tracking-widest text-muted">Total power</p>
+    <p class="font-display text-4xl mt-3">{{ stats.total_power }}</p>
+  </article>
+  <article class="bg-card border border-edge rounded p-5">
+    <p class="font-mono text-xs uppercase tracking-widest text-muted">Total merit</p>
+    <p class="font-display text-4xl mt-3">{{ stats.total_merit }}</p>
+  </article>
+  <article class="bg-card border border-edge rounded p-5">
+    <p class="font-mono text-xs uppercase tracking-widest text-muted">Active players</p>
+    <p class="font-display text-4xl mt-3">{{ stats.active_players }}</p>
+  </article>
+</section>
+
+<!-- Charts + top performers ---------------------------------------------- -->
+<section class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-4 mb-12">
+  <div class="lg:col-span-2 bg-card border border-edge rounded p-6">
+    <div class="flex justify-between items-baseline">
+      <h2 class="font-display text-2xl">Power distribution</h2>
+      <span class="text-muted text-xs font-mono">last snapshot</span>
+    </div>
+    <div class="mt-6 h-64 flex items-center justify-center text-muted text-sm border border-dashed border-edge rounded">
+      Chart placeholder — ingestion pipeline pending (Day 2)
+    </div>
+  </div>
+
+  <div class="bg-card border border-edge rounded p-6">
+    <div class="flex justify-between items-baseline">
+      <h2 class="font-display text-2xl">Top performers</h2>
+      <span class="text-gold text-xs font-mono">S-tier</span>
+    </div>
+    <ul class="mt-6 space-y-1 text-sm">
+      {% for i in range(5) %}
+      <li class="flex justify-between items-center py-2 border-b border-edge last:border-b-0">
+        <span class="text-muted font-mono">— —</span>
+        <span class="text-secondary">awaiting data</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+<!-- Chart.js will be wired on Day 2 once data flows. -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}

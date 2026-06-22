@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Eternal Vanguard alliance — Call of Dragons Kingdom 193." />
+  <title>{% block title %}Eternal Vanguard{% endblock %}</title>
+
+  <!-- Tailwind via CDN — no build step for the MVP. Switch to CLI in v2 if asset weight matters. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Cormorant (display) + Inter (body) + JetBrains Mono (data/numbers) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* --- Eternal Vanguard design tokens --------------------------------- */
+    :root {
+      --color-bg-base:      #060912;  /* deep night */
+      --color-bg-card:      #0F1524;  /* card surface */
+      --color-bg-elevated:  #182239;  /* hovered / elevated surface */
+      --color-border:       #1E293B;
+      --color-ring:         #334155;
+
+      --color-text-primary:   #F1F5F9;
+      --color-text-secondary: #94A3B8;
+      --color-text-muted:     #64748B;
+
+      --color-cyan:        #22D3EE;   /* glacial cyan — interactive, highlights */
+      --color-cyan-bright: #06B6D4;   /* CTA */
+      --color-gold:        #DDB872;   /* pale gold — S-tier, top players */
+      --color-violet:      #A78BFA;   /* royal violet — alternate accent */
+
+      --font-display: 'Cormorant', Georgia, serif;
+      --font-body:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono:    'JetBrains Mono', 'Courier New', monospace;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--color-bg-base);
+      color: var(--color-text-primary);
+      min-height: 100vh;
+      /* Subtle starlight from above — single radial wash, restrained. */
+      background-image: radial-gradient(
+        ellipse 1200px 600px at top,
+        rgba(34, 211, 238, 0.07) 0%,
+        transparent 70%
+      );
+    }
+
+    .font-display { font-family: var(--font-display); letter-spacing: 0.01em; }
+    .font-mono    { font-family: var(--font-mono); }
+
+    .text-cyan      { color: var(--color-cyan); }
+    .text-gold      { color: var(--color-gold); }
+    .text-secondary { color: var(--color-text-secondary); }
+    .text-muted     { color: var(--color-text-muted); }
+
+    .bg-card     { background-color: var(--color-bg-card); }
+    .bg-elevated { background-color: var(--color-bg-elevated); }
+    .border-edge { border-color: var(--color-border); }
+
+    /* Starfield — tiny pinpricks, fixed in place, very low opacity */
+    .starfield {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.5;
+      background-image:
+        radial-gradient(1px 1px at 18% 22%, rgba(241, 245, 249, 0.55), transparent 50%),
+        radial-gradient(1px 1px at 76% 68%, rgba(241, 245, 249, 0.40), transparent 50%),
+        radial-gradient(1px 1px at 42% 84%, rgba(34, 211, 238, 0.35), transparent 50%),
+        radial-gradient(1px 1px at 62% 16%, rgba(221, 184, 114, 0.30), transparent 50%),
+        radial-gradient(1px 1px at  8% 58%, rgba(241, 245, 249, 0.30), transparent 50%),
+        radial-gradient(1px 1px at 91% 47%, rgba(241, 245, 249, 0.40), transparent 50%),
+        radial-gradient(1px 1px at 33% 38%, rgba(221, 184, 114, 0.25), transparent 50%),
+        radial-gradient(1px 1px at 55% 72%, rgba(241, 245, 249, 0.30), transparent 50%);
+    }
+
+    /* The "signet" — brand signature divider. A single gold dot riding a hairline. */
+    .signet {
+      position: relative;
+      height: 1px;
+      background-color: var(--color-border);
+    }
+    .signet::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 6px;
+      height: 6px;
+      background-color: var(--color-gold);
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(221, 184, 114, 0.5);
+    }
+
+    /* Reduced motion respect */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+
+  {% block head_extra %}{% endblock %}
+</head>
+
+<body class="antialiased">
+  <div class="starfield" aria-hidden="true"></div>
+
+  <header class="relative z-10 border-b border-edge">
+    <nav class="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
+      <a href="/" class="font-display text-2xl tracking-wider">
+        Eternal <span class="text-gold">Vanguard</span>
+      </a>
+      <ul class="hidden md:flex items-center gap-8 text-sm">
+        <li><a href="/" class="hover:text-cyan-300 transition-colors">Home</a></li>
+        <li><a href="/dashboard" class="hover:text-cyan-300 transition-colors">Dashboard</a></li>
+        <li><a href="#" class="text-muted hover:text-cyan-300 transition-colors">Events</a></li>
+        <li><a href="#" class="text-muted hover:text-cyan-300 transition-colors">Recruit</a></li>
+      </ul>
+      <a href="#"
+         class="text-sm px-4 py-2 border border-edge rounded hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+        Sign in
+      </a>
+    </nav>
+  </header>
+
+  <main class="relative z-10">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="relative z-10 border-t border-edge mt-24">
+    <div class="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row justify-between gap-3 text-sm text-muted">
+      <span>Kingdom 193 · Call of Dragons</span>
+      <span class="font-mono text-xs">v0.1.0</span>
+    </div>
+  </footer>
+</body>
+</html>
