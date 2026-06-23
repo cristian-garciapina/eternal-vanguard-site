@@ -2,8 +2,8 @@
 Eternal Vanguard — main FastAPI application.
 
 Serves the public landing page at `/` and the alliance dashboard at
-`/dashboard`. Data ingestion endpoints (POST /api/ingest) and the scoring
-system will be added on Day 2 of the MVP sprint.
+`/dashboard`. Data ingestion endpoint (POST /api/ingest) is provided
+by the `ingest` router.
 """
 from pathlib import Path
 
@@ -11,6 +11,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+
+from .ingest import router as ingest_router
 
 # --- Paths ----------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
@@ -22,10 +24,12 @@ app = FastAPI(
     title="Eternal Vanguard",
     description="Alliance management website for Call of Dragons — Kingdom 193.",
     version="0.1.0",
-    # Hide auto-generated API docs in production; useful while developing.
     docs_url="/_docs",
     redoc_url=None,
 )
+
+# Mount the ingestion router (POST /api/ingest, bearer-token protected).
+app.include_router(ingest_router)
 
 # Serve /static/* from disk if the directory exists.
 if STATIC_DIR.exists():

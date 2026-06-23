@@ -1,37 +1,24 @@
-# --- Python ---------------------------------------------------------------
+# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+*.pyc
+*.pyo
+*.egg-info/
 .venv/
 venv/
-env/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
 
-# --- Project data (PII of alliance members — never committed) -------------
-data/*.xlsx
-data/*.csv
-data/*.db
-data/*.sqlite
-data/*.sqlite3
+# Project data (PII -- members' game stats stay local)
+data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
 
-# --- Secrets --------------------------------------------------------------
+# Local secrets
 .env
-.env.local
-*.pem
-*.key
+*.env
 
-# --- Logs -----------------------------------------------------------------
-*.log
-logs/
-
-# --- Editors & OS ---------------------------------------------------------
+# Editors / IDE
+.obsidian/
 .vscode/
 .idea/
 *.swp
-*.swo
-.DS_Store
-Thumbs.db
