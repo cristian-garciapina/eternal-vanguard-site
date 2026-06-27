@@ -1,47 +1,31 @@
-"""
-Excel ingestion pipeline for Farlight K193 exports.
+"""Excel ingestion pipeline for Farlight K193 exports (17-column format).
 
-Endpoint
---------
-POST /api/ingest
-    multipart/form-data with field `file` containing the Farlight Excel
-    export. Bearer-token authenticated.
+Source: cod-game-tools.farlightgames.com/topn (official beta portal).
 
-Parser
-------
-Tolerant on filename, strict on the 9-column French header layout from
-the Farlight kingdom-wide export. Header mapping (FR -> EN) is normalized
-via casefold + accent stripping so 'Merites' and 'Merites' match alike.
-
-Flow
-----
-1. Read upload bytes into openpyxl (read_only=True keeps memory flat).
-2. Validate the 9 expected headers; abort 400 on mismatch.
-3. Extract taken_at from filename (YYYY-MM-DD regex), fallback to now.
-4. Reject 409 if a snapshot with same (filename, taken_at) already exists.
-5. Upsert members (insert new character_ids, refresh current_name/last_seen).
-6. Bulk-insert stat rows for the new snapshot.
-7. Return JSON summary.
+The portal lets users tick which columns to include in the export.
+This parser is therefore tolerant: any subset of known columns is accepted,
+provided the minimal identity columns are present (character_id, name, power,
+merits_total).
 """
 from __future__ import annotations
 
 import io
 import re
 import unicodedata
-from datetime import datetime, timezone
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from openpyxl import load_workbook
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from .db import get_session
-from .models import Member, Snapshot, Stat
+from .models import Member, Season, Setting, Snapshot, Stat
 from .security import require_ingest_token
 
 router = APIRouter(prefix="/api", tags=["ingest"])
 
-# Header mapping: normalized FR header -> internal field name
+
 HEADER_MAP = {
     "rang": "rank",
     "identifiant du personnage": "character_id",
@@ -49,185 +33,250 @@ HEADER_MAP = {
     "puissance actuelle": "power",
     "plus haute puissance historique": "peak_power",
     "morts (t4/t5)": "deaths_t45",
-    "merites par type d'unite": "merits",
-    "recolte": "harvest",
+    "merites totaux": "merits_total",
+    "infanterie uniquement": "merits_infantry",
+    "cavalerie uniquement": "merits_cavalry",
+    "tireurs d'elite uniquement": "merits_archers",
+    "unites magiques uniquement": "merits_magic",
+    "autres merites": "merits_other",
     "guerison (t4/t5)": "healing_t45",
+    "dons de l'alliance": "alliance_donations",
+    "temps de construction": "build_time",
+    "temps de destruction": "destruction_time",
+    "victoires lors de raids de behemoth": "behemoth_victories",
+    "recolte": "harvest",
 }
-EXPECTED_FIELDS = set(HEADER_MAP.values())
-_DATE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})")
+
+REQUIRED_FIELDS = {"character_id", "current_name", "power", "merits_total"}
+
+_FILENAME_DATES_RE = re.compile(r"(\d{4}-\d{2}-\d{2})[_-](\d{4}-\d{2}-\d{2})")
 
 
 def _normalize(s) -> str:
-    """Lowercase, strip accents (NFKD + drop combining marks), collapse ws."""
     if s is None:
         return ""
-    s = unicodedata.normalize("NFKD", str(s))
+    s = str(s).strip().lower()
+    s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
-    return " ".join(s.lower().split())
+    s = re.sub(r"\s+", " ", s)
+    return s
 
 
-def _to_int(v) -> int:
-    """Coerce Excel cell (str/int/float/None) to int. None -> 0."""
+def _parse_int(v) -> int:
     if v is None or v == "":
         return 0
     try:
-        return int(v)
-    except (TypeError, ValueError):
-        return int(float(v))
+        return int(float(str(v).replace(" ", "").replace(",", "")))
+    except (ValueError, TypeError):
+        return 0
 
 
-def _extract_taken_at(filename: str) -> datetime:
-    """Pull YYYY-MM-DD from filename, default to UTC now."""
-    m = _DATE_RE.search(filename or "")
-    if m:
-        try:
-            return datetime.strptime(m.group(1), "%Y-%m-%d").replace(
-                tzinfo=timezone.utc
-            )
-        except ValueError:
-            pass
-    return datetime.now(timezone.utc)
+def _extract_dates_from_filename(filename: str) -> tuple[date, date]:
+    m = _FILENAME_DATES_RE.search(filename)
+    if not m:
+        today = date.today()
+        return today, today
+    return date.fromisoformat(m.group(1)), date.fromisoformat(m.group(2))
 
 
-def _parse_workbook(content: bytes):
-    """Parse Excel bytes -> (rows: list[dict], warnings: list[str])."""
+def _get_setting_bool(session: Session, key: str, default: bool) -> bool:
+    setting = session.execute(select(Setting).where(Setting.key == key)).scalar_one_or_none()
+    if setting is None:
+        return default
+    return bool(setting.value.get("v", default))
+
+
+def _get_active_season(session: Session) -> Season:
+    season = session.execute(
+        select(Season).where(Season.is_active.is_(True))
+    ).scalar_one_or_none()
+    if season is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No active season. Seed one via init_db.",
+        )
+    return season
+
+
+def _detect_overlap(session: Session, season_id: int, date_start: date, date_end: date):
+    candidates = session.execute(
+        select(Snapshot).where(Snapshot.season_id == season_id)
+    ).scalars().all()
+    for c in candidates:
+        if max(c.date_start, date_start) <= min(c.date_end, date_end):
+            return c
+    return None
+
+
+@router.post("/ingest", status_code=status.HTTP_201_CREATED)
+async def ingest_excel(
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+    _: None = Depends(require_ingest_token),
+):
+    raw = await file.read()
     try:
-        wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+        wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
     except Exception as exc:
-        raise HTTPException(400, f"Could not open workbook: {exc}")
+        raise HTTPException(status_code=400, detail=f"Cannot open as Excel: {exc}")
 
     ws = wb.active
-    iterator = ws.iter_rows(values_only=True)
+    rows_iter = ws.iter_rows(values_only=True)
 
     try:
-        raw_headers = next(iterator)
+        header_row = next(rows_iter)
     except StopIteration:
-        raise HTTPException(400, "Empty workbook.")
+        raise HTTPException(status_code=400, detail="Empty file.")
 
-    column_fields = [HEADER_MAP.get(_normalize(h)) for h in raw_headers]
-    found = {f for f in column_fields if f is not None}
-    missing = EXPECTED_FIELDS - found
+    columns = []
+    seen_fields = set()
+    for cell in header_row:
+        key = _normalize(cell)
+        field = HEADER_MAP.get(key)
+        columns.append(field)
+        if field:
+            seen_fields.add(field)
+
+    missing = REQUIRED_FIELDS - seen_fields
     if missing:
         raise HTTPException(
-            400,
-            f"Missing expected columns: {sorted(missing)}. "
-            f"Got headers: {list(raw_headers)}",
+            status_code=400,
+            detail=f"Missing required columns: {sorted(missing)}",
         )
 
-    rows, warnings = [], []
-    for row_idx, row in enumerate(iterator, start=2):
-        if row is None or all(v is None or v == "" for v in row):
-            continue
-        record = {}
-        for field, cell in zip(column_fields, row):
-            if field is None:
-                continue
-            if field in {"character_id", "current_name"}:
-                record[field] = str(cell).strip() if cell is not None else ""
-            else:
-                record[field] = _to_int(cell)
-        if not record.get("character_id"):
-            warnings.append(f"Row {row_idx}: missing character_id, skipped.")
-            continue
-        if not record.get("current_name"):
-            record["current_name"] = f"Lord{record['character_id']}"
-        rows.append(record)
+    filename = file.filename or "unknown.xlsx"
+    date_start, date_end = _extract_dates_from_filename(filename)
 
-    if not rows:
-        raise HTTPException(400, "No data rows found after the header.")
-    return rows, warnings
-
-
-@router.post(
-    "/ingest",
-    dependencies=[Depends(require_ingest_token)],
-    status_code=status.HTTP_201_CREATED,
-)
-async def ingest_snapshot(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_session),
-):
-    """Ingest one Farlight Excel export as a new snapshot."""
-    content = await file.read()
-    if not content:
-        raise HTTPException(400, "Empty upload.")
-
-    rows, warnings = _parse_workbook(content)
-    taken_at = _extract_taken_at(file.filename or "")
-    fname = file.filename or ""
-
-    # Idempotence guard: same file, same date -> reject
-    dup = db.execute(
+    existing = session.execute(
         select(Snapshot).where(
-            Snapshot.source_filename == fname,
-            Snapshot.taken_at == taken_at,
+            and_(
+                Snapshot.source_filename == filename,
+                Snapshot.date_start == date_start,
+                Snapshot.date_end == date_end,
+            )
         )
     ).scalar_one_or_none()
-    if dup is not None:
+    if existing:
         raise HTTPException(
-            409,
-            f"Snapshot already ingested (id={dup.id}, "
-            f"taken_at={dup.taken_at.isoformat()}).",
+            status_code=409,
+            detail=f"Snapshot already ingested (id={existing.id}).",
         )
 
-    now = datetime.now(timezone.utc)
-    char_ids = [r["character_id"] for r in rows]
-    existing = {
+    season = _get_active_season(session)
+    if _get_setting_bool(session, "ingest.reject_overlapping_periods", default=True):
+        overlap = _detect_overlap(session, season.id, date_start, date_end)
+        if overlap:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Date range overlaps existing snapshot id={overlap.id} "
+                    f"({overlap.date_start} to {overlap.date_end})."
+                ),
+            )
+
+    parsed_rows = []
+    skipped = 0
+    for row in rows_iter:
+        if row is None or all(c is None or c == "" for c in row):
+            continue
+        record = {}
+        for col_field, value in zip(columns, row):
+            if col_field is None:
+                continue
+            record[col_field] = value
+        if not record.get("character_id") or not record.get("current_name"):
+            skipped += 1
+            continue
+        try:
+            record["character_id"] = int(record["character_id"])
+        except (ValueError, TypeError):
+            skipped += 1
+            continue
+        parsed_rows.append(record)
+
+    if not parsed_rows:
+        raise HTTPException(status_code=400, detail="No valid data rows.")
+
+    snapshot = Snapshot(
+        season_id=season.id,
+        date_start=date_start,
+        date_end=date_end,
+        source_filename=filename,
+        row_count=len(parsed_rows),
+        ingested_at=datetime.utcnow(),
+        ingested_by="api",
+    )
+    session.add(snapshot)
+    session.flush()
+
+    members_created = 0
+    members_updated = 0
+    now = datetime.utcnow()
+
+    char_ids = [r["character_id"] for r in parsed_rows]
+    existing_members = {
         m.character_id: m
-        for m in db.execute(
+        for m in session.execute(
             select(Member).where(Member.character_id.in_(char_ids))
         ).scalars()
     }
 
-    created = updated = 0
-    for r in rows:
-        m = existing.get(r["character_id"])
-        if m is None:
-            db.add(Member(
-                character_id=r["character_id"],
-                current_name=r["current_name"],
+    stat_objects = []
+    for r in parsed_rows:
+        cid = r["character_id"]
+        name = str(r["current_name"]).strip()
+
+        member = existing_members.get(cid)
+        if member is None:
+            member = Member(
+                character_id=cid,
+                current_name=name,
                 in_alliance=False,
+                troop_tier="unknown",
                 first_seen_at=now,
                 last_seen_at=now,
-            ))
-            created += 1
+            )
+            session.add(member)
+            members_created += 1
         else:
-            if m.current_name != r["current_name"]:
-                m.current_name = r["current_name"]
-            m.last_seen_at = now
-            updated += 1
-    db.flush()
+            member.current_name = name
+            member.last_seen_at = now
+            members_updated += 1
 
-    snap = Snapshot(
-        taken_at=taken_at,
-        source_filename=fname,
-        row_count=len(rows),
-    )
-    db.add(snap)
-    db.flush()
-
-    db.bulk_save_objects([
-        Stat(
-            snapshot_id=snap.id,
-            character_id=r["character_id"],
-            rank=r["rank"],
-            power=r["power"],
-            peak_power=r["peak_power"],
-            deaths_t45=r["deaths_t45"],
-            merits=r["merits"],
-            harvest=r["harvest"],
-            healing_t45=r["healing_t45"],
+        stat_objects.append(
+            Stat(
+                snapshot_id=snapshot.id,
+                character_id=cid,
+                rank=_parse_int(r.get("rank")) or None,
+                power=_parse_int(r.get("power")),
+                peak_power=_parse_int(r.get("peak_power")) or None,
+                deaths_t45=_parse_int(r.get("deaths_t45")),
+                merits_total=_parse_int(r.get("merits_total")),
+                merits_infantry=_parse_int(r.get("merits_infantry")),
+                merits_cavalry=_parse_int(r.get("merits_cavalry")),
+                merits_archers=_parse_int(r.get("merits_archers")),
+                merits_magic=_parse_int(r.get("merits_magic")),
+                merits_other=_parse_int(r.get("merits_other")),
+                healing_t45=_parse_int(r.get("healing_t45")),
+                alliance_donations=_parse_int(r.get("alliance_donations")),
+                build_time=_parse_int(r.get("build_time")),
+                destruction_time=_parse_int(r.get("destruction_time")),
+                behemoth_victories=_parse_int(r.get("behemoth_victories")),
+                harvest=_parse_int(r.get("harvest")),
+            )
         )
-        for r in rows
-    ])
-    db.commit()
+
+    session.add_all(stat_objects)
+    session.commit()
 
     return {
-        "snapshot_id": snap.id,
-        "taken_at": taken_at.isoformat(),
-        "source_filename": fname,
-        "row_count": len(rows),
-        "members_created": created,
-        "members_updated": updated,
-        "warnings": warnings,
+        "snapshot_id": snapshot.id,
+        "season_id": season.id,
+        "date_start": str(date_start),
+        "date_end": str(date_end),
+        "rows_parsed": len(parsed_rows),
+        "rows_skipped": skipped,
+        "members_created": members_created,
+        "members_updated": members_updated,
+        "columns_detected": sorted(seen_fields),
     }
