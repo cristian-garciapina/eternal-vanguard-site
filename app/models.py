@@ -365,3 +365,58 @@ class Score(Base):
         Index("ix_score_season_snapshot", "season_id", "snapshot_id"),
         Index("ix_score_member_snapshot", "character_id", "snapshot_id"),
     )
+
+
+# ============================================================================
+# AUTH (users + server-side sessions)
+# ============================================================================
+
+
+class User(Base):
+    """Authenticated account. Linked optionally to a Member via character_id."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), default="member", nullable=False)
+    # 'staff' = R4/R5 with full UI access; 'member' = own-stats view.
+
+    character_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("members.character_id")
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    sessions: Mapped[list["UserSession"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class UserSession(Base):
+    """Server-side session record. The session_id is the value stored in the
+    httpOnly cookie sent to the browser.
+    """
+
+    __tablename__ = "user_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        String(64), unique=True, nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    ip: Mapped[Optional[str]] = mapped_column(String(45))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(256))
+
+    user: Mapped["User"] = relationship(back_populates="sessions")
+
+    __table_args__ = (
+        Index("ix_session_expires", "expires_at"),
+    )
