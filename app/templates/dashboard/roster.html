@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Roster · Eternal Vanguard{% endblock %}
 
+{% set is_staff = user and user.role == 'staff' %}
+
 {% block content %}
-<div class="max-w-full mx-auto px-6 py-12" data-page="roster">
+<div class="max-w-full mx-auto px-6 py-12" data-page="roster" data-role="{{ user.role }}">
 
   <section data-section="hero" class="mb-8">
     <p class="text-sm text-secondary uppercase tracking-wider mb-2">
@@ -38,14 +40,15 @@
         </select>
       </div>
 
-      <div class="flex items-center gap-2">
+      {% if is_staff %}
+      <div class="flex items-center gap-2" data-staff-only="farms-toggle">
         <input id="farms" name="farms" type="checkbox" value="1"
                {% if filters.include_farms %}checked{% endif %}
                class="bg-card border border-edge rounded">
         <label for="farms" class="text-sm text-secondary">Include farms</label>
       </div>
+      {% endif %}
 
-      <!-- Preserve current sort across filter submissions -->
       <input type="hidden" name="sort" value="{{ filters.sort }}">
       <input type="hidden" name="order" value="{{ filters.order }}">
 
@@ -67,7 +70,6 @@
   {% set farms_qs = 'farms=1' if filters.include_farms else '' %}
   {% set base_qs = [q_qs, grade_qs, farms_qs] | select | join('&') %}
 
-  {# Build a sort-toggling URL for a given column key #}
   {% macro sort_link(col, label) -%}
     {%- set new_order = 'asc' if (filters.sort == col and filters.order == 'desc') else 'desc' -%}
     {%- set sort_qs = 'sort=' ~ col ~ '&order=' ~ new_order -%}
@@ -87,8 +89,13 @@
         <thead class="bg-elevated text-xs text-muted uppercase tracking-wider sticky top-0">
           <tr>
             <th class="px-3 py-3 text-left">#</th>
-            <th class="px-3 py-3 text-left"  data-col="name">{{ sort_link('name', 'Operator') }}</th>
+            <th class="px-3 py-3 text-left"  data-col="name">{{ sort_link('name', 'Player') }}</th>
             <th class="px-3 py-3 text-center" data-col="grade">{{ sort_link('grade', 'Grade') }}</th>
+
+            {% if is_staff %}
+            <th class="px-3 py-3 text-center" data-col="status" data-staff-only="true">Status</th>
+            {% endif %}
+
             <th class="px-3 py-3 text-right"  data-col="mp">{{ sort_link('mp', 'M/P %') }}</th>
             <th class="px-3 py-3 text-right"  data-col="merits_total">{{ sort_link('merits_total', 'Merits') }}</th>
             <th class="px-3 py-3 text-right"  data-col="power">{{ sort_link('power', 'Power') }}</th>
@@ -105,6 +112,10 @@
             <th class="px-3 py-3 text-right"  data-col="merits_archers">{{ sort_link('merits_archers', 'Archers merits') }}</th>
             <th class="px-3 py-3 text-right"  data-col="merits_magic">{{ sort_link('merits_magic', 'Mage merits') }}</th>
             <th class="px-3 py-3 text-right"  data-col="merits_other">{{ sort_link('merits_other', 'Other merits') }}</th>
+
+            {% if is_staff %}
+            <th class="px-3 py-3 text-center" data-col="actions" data-staff-only="true">Actions</th>
+            {% endif %}
           </tr>
         </thead>
         <tbody>
@@ -113,6 +124,14 @@
             <td class="px-3 py-2 font-mono text-muted text-xs">{{ loop.index }}</td>
             <td class="px-3 py-2">{{ row.name }}</td>
             <td class="px-3 py-2 text-center font-mono" data-grade="{{ row.grade|lower }}">{{ row.grade }}</td>
+
+            {% if is_staff %}
+            <td class="px-3 py-2 text-center font-mono text-muted" data-staff-only="true">
+              {# Status will be wired in when staff actions land #}
+              —
+            </td>
+            {% endif %}
+
             <td class="px-3 py-2 text-right font-mono">{{ "%.1f"|format(row.mp_ratio) }}%</td>
             <td class="px-3 py-2 text-right font-mono">{{ row.merits_total_short }}</td>
             <td class="px-3 py-2 text-right font-mono">{{ row.power_short }}</td>
@@ -129,6 +148,13 @@
             <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_archers_short }}</td>
             <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_magic_short }}</td>
             <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_other_short }}</td>
+
+            {% if is_staff %}
+            <td class="px-3 py-2 text-center" data-staff-only="true">
+              {# Actions (mark burn, add event, etc.) will land here #}
+              <span class="text-muted text-xs">—</span>
+            </td>
+            {% endif %}
           </tr>
           {% endfor %}
         </tbody>

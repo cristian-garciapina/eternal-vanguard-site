@@ -121,7 +121,7 @@ async def dashboard_overview(
             "stats": stats,
             "distribution": queries.get_grade_distribution(db, season.id, snapshot.id),
             "top_performers": queries.get_top_performers(
-                db, season.id, snapshot.id, limit=50
+                db, season.id, snapshot.id, limit=20
             ),
             "has_scores": True,
         }

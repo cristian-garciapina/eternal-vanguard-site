@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Dashboard · Eternal Vanguard{% endblock %}
 {% block content %}
-<div class="max-w-7xl mx-auto px-6 py-12" data-page="dashboard">
+<div class="max-w-6xl mx-auto px-6 py-12" data-page="dashboard">
 
   <section data-section="hero" class="mb-12">
     <p class="text-sm text-secondary uppercase tracking-wider mb-2">
@@ -68,32 +68,22 @@
     <section data-section="top-performers" class="mb-12">
       <div class="flex items-baseline justify-between mb-4">
         <h2 class="font-display text-2xl">Top of the Vanguard</h2>
-        <p class="text-xs text-muted">Scroll horizontally for full breakdown →</p>
+        <a href="/roster" class="text-sm text-secondary hover:text-cyan-300 transition-colors">
+          View full roster →
+        </a>
       </div>
 
-      <div class="border border-edge bg-card rounded overflow-x-auto">
-        <table class="w-full text-sm whitespace-nowrap">
+      <div class="border border-edge bg-card rounded overflow-hidden">
+        <table class="w-full text-sm">
           <thead class="bg-elevated text-xs text-muted uppercase tracking-wider">
             <tr>
               <th class="px-4 py-3 text-left">Rank</th>
-              <th class="px-4 py-3 text-left">Operator</th>
+              <th class="px-4 py-3 text-left">Player</th>
               <th class="px-4 py-3 text-center">Grade</th>
-              <th class="px-4 py-3 text-right" data-col="mp">M/P %</th>
-              <th class="px-4 py-3 text-right" data-col="merits-total">Merits</th>
-              <th class="px-4 py-3 text-right" data-col="power">Power</th>
-              <th class="px-4 py-3 text-right" data-col="peak-power">Peak power</th>
-              <th class="px-4 py-3 text-right" data-col="deaths">Deaths T4/T5</th>
-              <th class="px-4 py-3 text-right" data-col="healing">Healing T4/T5</th>
-              <th class="px-4 py-3 text-right" data-col="destruction">Destruction</th>
-              <th class="px-4 py-3 text-right" data-col="construction">Build time</th>
-              <th class="px-4 py-3 text-right" data-col="behemoth">Behemoths</th>
-              <th class="px-4 py-3 text-right" data-col="harvest">Harvest</th>
-              <th class="px-4 py-3 text-right" data-col="donations">Donations</th>
-              <th class="px-4 py-3 text-right" data-col="merits-inf">Inf merits</th>
-              <th class="px-4 py-3 text-right" data-col="merits-cav">Cav merits</th>
-              <th class="px-4 py-3 text-right" data-col="merits-arc">Archers merits</th>
-              <th class="px-4 py-3 text-right" data-col="merits-mag">Mage merits</th>
-              <th class="px-4 py-3 text-right" data-col="merits-oth">Other merits</th>
+              <th class="px-4 py-3 text-right">M/P %</th>
+              <th class="px-4 py-3 text-right">Merits</th>
+              <th class="px-4 py-3 text-right">Start power</th>
+              <th class="px-4 py-3 text-right">Current power</th>
             </tr>
           </thead>
           <tbody>
@@ -101,23 +91,11 @@
             <tr data-rank="{{ loop.index }}" class="border-t border-edge">
               <td class="px-4 py-3 font-mono text-muted">{{ "%02d"|format(loop.index) }}</td>
               <td class="px-4 py-3">{{ row.name }}</td>
-              <td class="px-4 py-3 text-center" data-grade="{{ row.grade|lower }}">{{ row.grade }}</td>
+              <td class="px-4 py-3 text-center font-mono" data-grade="{{ row.grade|lower }}">{{ row.grade }}</td>
               <td class="px-4 py-3 text-right font-mono">{{ "%.1f"|format(row.mp_ratio) }}%</td>
               <td class="px-4 py-3 text-right font-mono">{{ row.merits_total_short }}</td>
-              <td class="px-4 py-3 text-right font-mono">{{ row.power_short }}</td>
-              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.peak_power_short }}</td>
-              <td class="px-4 py-3 text-right font-mono">{{ row.deaths_t45_short }}</td>
-              <td class="px-4 py-3 text-right font-mono">{{ row.healing_t45_short }}</td>
-              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.destruction_time_short }}</td>
-              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.build_time_short }}</td>
-              <td class="px-4 py-3 text-right font-mono">{{ row.behemoth_victories }}</td>
-              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.harvest_short }}</td>
-              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.alliance_donations_short }}</td>
-              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.merits_infantry_short }}</td>
-              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.merits_cavalry_short }}</td>
-              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.merits_archers_short }}</td>
-              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.merits_magic_short }}</td>
-              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.merits_other_short }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.start_power_short }}</td>
+              <td class="px-4 py-3 text-right font-mono">{{ row.end_power_short }}</td>
             </tr>
             {% endfor %}
           </tbody>

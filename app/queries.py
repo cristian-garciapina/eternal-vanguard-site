@@ -152,6 +152,10 @@ def _row_to_dict(score: Score, member: Member, stat: Stat) -> dict:
     return {
         # Identity
         "name": member.current_name,
+        "start_power": score.start_power,
+        "start_power_short": format_number_short(score.start_power),
+        "end_power": score.end_power,
+        "end_power_short": format_number_short(score.end_power),
         "character_id": member.character_id,
 
         # Scoring outputs
