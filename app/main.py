@@ -1,17 +1,19 @@
 """
 Eternal Vanguard — main FastAPI application.
 
+Routes:
 - `/`              public landing
 - `/login`         public
 - `/logout`        public (POST)
-- `/dashboard`     authenticated, all members
+- `/dashboard`     authenticated overview
+- `/roster`        authenticated full member grid
 - `/api/ingest`    bearer-token protected
 - `/healthz`       public
 """
 from pathlib import Path
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -35,7 +37,7 @@ STATIC_DIR = BASE_DIR / "static"
 app = FastAPI(
     title="Eternal Vanguard",
     description="Alliance management website for Call of Dragons — Kingdom 193.",
-    version="0.3.0",
+    version="0.4.0",
     docs_url="/_docs",
     redoc_url=None,
 )
@@ -49,13 +51,12 @@ if STATIC_DIR.exists():
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
-# --- Exception handlers ---------------------------------------------------
 @app.exception_handler(RequiresLoginException)
 async def requires_login_handler(request: Request, exc: RequiresLoginException):
     return RedirectResponse(url=f"/login?next={exc.next_url}", status_code=303)
 
 
-# --- Routes ---------------------------------------------------------------
+# --- Public --------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def landing(
     request: Request,
@@ -72,13 +73,18 @@ async def landing(
     )
 
 
+@app.get("/healthz")
+async def healthz() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+# --- Authenticated dashboard ---------------------------------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_overview(
     request: Request,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    """Alliance overview — visible to any authenticated member."""
     context: dict = {
         "user": user,
         "kingdom": 193,
@@ -115,7 +121,7 @@ async def dashboard_overview(
             "stats": stats,
             "distribution": queries.get_grade_distribution(db, season.id, snapshot.id),
             "top_performers": queries.get_top_performers(
-                db, season.id, snapshot.id, limit=15
+                db, season.id, snapshot.id, limit=50
             ),
             "has_scores": True,
         }
@@ -126,6 +132,65 @@ async def dashboard_overview(
     )
 
 
-@app.get("/healthz")
-async def healthz() -> dict[str, str]:
-    return {"status": "ok"}
+# --- Authenticated full roster (Excel-like) ------------------------------
+@app.get("/roster", response_class=HTMLResponse)
+async def roster(
+    request: Request,
+    q: str = Query("", description="Substring search on member name"),
+    grade: str = Query("", description="Filter by grade letter"),
+    sort: str = Query("mp", description="Sort column key"),
+    order: str = Query("desc", description="asc | desc"),
+    farms: str = Query("0", description="Include farms (1) or not (0)"),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    include_farms = farms in ("1", "true", "yes")
+
+    context: dict = {
+        "user": user,
+        "kingdom": 193,
+        "season": None,
+        "snapshot": None,
+        "rows": [],
+        "total_count": 0,
+        "filtered_count": 0,
+        "filters": {
+            "q": q,
+            "grade": grade.upper() if grade else "",
+            "sort": sort,
+            "order": order,
+            "include_farms": include_farms,
+        },
+        "sortable_columns": list(queries.ROSTER_SORTABLE_COLUMNS.keys()),
+    }
+
+    season = queries.get_active_season(db)
+    if season is None:
+        return templates.TemplateResponse(
+            request=request, name="dashboard/roster.html", context=context
+        )
+    context["season"] = season
+
+    snapshot = queries.get_scoring_snapshot(db, season)
+    if snapshot is None or not queries.has_any_scores(db, snapshot.id):
+        return templates.TemplateResponse(
+            request=request, name="dashboard/roster.html", context=context
+        )
+    context["snapshot"] = snapshot
+
+    context["total_count"] = queries.count_total_roster(db, season.id, snapshot.id)
+    context["rows"] = queries.get_full_roster(
+        db,
+        season.id,
+        snapshot.id,
+        search=q or None,
+        grade=grade or None,
+        include_farms=include_farms,
+        sort=sort,
+        order=order,
+    )
+    context["filtered_count"] = len(context["rows"])
+
+    return templates.TemplateResponse(
+        request=request, name="dashboard/roster.html", context=context
+    )

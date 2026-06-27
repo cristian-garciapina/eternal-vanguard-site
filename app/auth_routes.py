@@ -52,7 +52,7 @@ async def login_submit(
             name="auth/login.html",
             context={
                 "next": next,
-                "error": "Identifiants invalides.",
+                "error": "Invalid username or password.",
             },
             status_code=status.HTTP_401_UNAUTHORIZED,
         )

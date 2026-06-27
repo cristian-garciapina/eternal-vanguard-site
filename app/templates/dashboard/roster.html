@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Roster · Eternal Vanguard{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto px-6 py-12" data-page="roster">
+
+  <section data-section="hero" class="mb-8">
+    <p class="text-sm text-secondary uppercase tracking-wider mb-2">
+      Kingdom {{ kingdom }}{% if season %} · {{ season.name }}{% endif %}
+    </p>
+    <h1 class="font-display text-4xl mb-2">Full roster</h1>
+    <p class="text-secondary text-sm">
+      {% if filtered_count == total_count %}
+        Showing all <span data-field="filtered-count">{{ filtered_count }}</span> scored members
+      {% else %}
+        Showing <span data-field="filtered-count">{{ filtered_count }}</span> of
+        <span data-field="total-count">{{ total_count }}</span> scored members
+      {% endif %}
+    </p>
+  </section>
+
+  <section data-section="filters" class="mb-6">
+    <form method="get" action="/roster" class="flex flex-wrap items-end gap-4">
+      <div class="flex-1 min-w-[200px]">
+        <label for="q" class="block text-xs text-muted uppercase tracking-wider mb-1">Search</label>
+        <input id="q" name="q" type="text" value="{{ filters.q }}" placeholder="Operator name"
+               class="w-full px-3 py-2 bg-card border border-edge rounded text-primary text-sm">
+      </div>
+
+      <div>
+        <label for="grade" class="block text-xs text-muted uppercase tracking-wider mb-1">Grade</label>
+        <select id="grade" name="grade"
+                class="px-3 py-2 bg-card border border-edge rounded text-primary text-sm">
+          <option value="" {% if filters.grade == "" %}selected{% endif %}>All</option>
+          {% for g in ['S', 'A', 'B', 'C', 'D'] %}
+            <option value="{{ g }}" {% if filters.grade == g %}selected{% endif %}>{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <input id="farms" name="farms" type="checkbox" value="1"
+               {% if filters.include_farms %}checked{% endif %}
+               class="bg-card border border-edge rounded">
+        <label for="farms" class="text-sm text-secondary">Include farms</label>
+      </div>
+
+      <!-- Preserve current sort across filter submissions -->
+      <input type="hidden" name="sort" value="{{ filters.sort }}">
+      <input type="hidden" name="order" value="{{ filters.order }}">
+
+      <div class="flex gap-2">
+        <button type="submit"
+                class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded transition-colors text-sm">
+          Apply
+        </button>
+        <a href="/roster"
+           class="px-4 py-2 border border-edge hover:border-cyan-400 hover:text-cyan-300 rounded transition-colors text-sm">
+          Reset
+        </a>
+      </div>
+    </form>
+  </section>
+
+  {% set q_qs = ('q=' ~ filters.q) if filters.q else '' %}
+  {% set grade_qs = ('grade=' ~ filters.grade) if filters.grade else '' %}
+  {% set farms_qs = 'farms=1' if filters.include_farms else '' %}
+  {% set base_qs = [q_qs, grade_qs, farms_qs] | select | join('&') %}
+
+  {# Build a sort-toggling URL for a given column key #}
+  {% macro sort_link(col, label) -%}
+    {%- set new_order = 'asc' if (filters.sort == col and filters.order == 'desc') else 'desc' -%}
+    {%- set sort_qs = 'sort=' ~ col ~ '&order=' ~ new_order -%}
+    {%- set full_qs = ([base_qs, sort_qs] | select | join('&')) -%}
+    <a href="/roster?{{ full_qs }}" class="hover:text-cyan-300 transition-colors">
+      {{ label }}
+      {% if filters.sort == col %}
+        <span class="font-mono" data-field="sort-indicator">{{ '↓' if filters.order == 'desc' else '↑' }}</span>
+      {% endif %}
+    </a>
+  {%- endmacro %}
+
+  <section data-section="grid">
+    <div class="border border-edge bg-card rounded overflow-x-auto">
+      {% if rows %}
+      <table class="w-full text-sm whitespace-nowrap" data-table="roster">
+        <thead class="bg-elevated text-xs text-muted uppercase tracking-wider sticky top-0">
+          <tr>
+            <th class="px-3 py-3 text-left">#</th>
+            <th class="px-3 py-3 text-left"  data-col="name">{{ sort_link('name', 'Operator') }}</th>
+            <th class="px-3 py-3 text-center" data-col="grade">{{ sort_link('grade', 'Grade') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="mp">{{ sort_link('mp', 'M/P %') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="merits_total">{{ sort_link('merits_total', 'Merits') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="power">{{ sort_link('power', 'Power') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="peak_power">{{ sort_link('peak_power', 'Peak power') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="deaths">{{ sort_link('deaths', 'Deaths T4/T5') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="healing">{{ sort_link('healing', 'Healing T4/T5') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="destruction">{{ sort_link('destruction', 'Destruction') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="build_time">{{ sort_link('build_time', 'Build time') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="behemoth">{{ sort_link('behemoth', 'Behemoths') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="harvest">{{ sort_link('harvest', 'Harvest') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="donations">{{ sort_link('donations', 'Donations') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="merits_infantry">{{ sort_link('merits_infantry', 'Inf merits') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="merits_cavalry">{{ sort_link('merits_cavalry', 'Cav merits') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="merits_archers">{{ sort_link('merits_archers', 'Archers merits') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="merits_magic">{{ sort_link('merits_magic', 'Mage merits') }}</th>
+            <th class="px-3 py-3 text-right"  data-col="merits_other">{{ sort_link('merits_other', 'Other merits') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr data-rank="{{ loop.index }}" class="border-t border-edge">
+            <td class="px-3 py-2 font-mono text-muted text-xs">{{ loop.index }}</td>
+            <td class="px-3 py-2">{{ row.name }}</td>
+            <td class="px-3 py-2 text-center font-mono" data-grade="{{ row.grade|lower }}">{{ row.grade }}</td>
+            <td class="px-3 py-2 text-right font-mono">{{ "%.1f"|format(row.mp_ratio) }}%</td>
+            <td class="px-3 py-2 text-right font-mono">{{ row.merits_total_short }}</td>
+            <td class="px-3 py-2 text-right font-mono">{{ row.power_short }}</td>
+            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.peak_power_short }}</td>
+            <td class="px-3 py-2 text-right font-mono">{{ row.deaths_t45_short }}</td>
+            <td class="px-3 py-2 text-right font-mono">{{ row.healing_t45_short }}</td>
+            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.destruction_time_short }}</td>
+            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.build_time_short }}</td>
+            <td class="px-3 py-2 text-right font-mono">{{ row.behemoth_victories }}</td>
+            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.harvest_short }}</td>
+            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.alliance_donations_short }}</td>
+            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_infantry_short }}</td>
+            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_cavalry_short }}</td>
+            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_archers_short }}</td>
+            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_magic_short }}</td>
+            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_other_short }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="p-8 text-center text-secondary">
+        {% if season is none %}
+          <p>No active season.</p>
+        {% elif snapshot is none %}
+          <p>No cumulative snapshot ingested yet.</p>
+        {% else %}
+          <p>No member matches the current filters.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+</div>
+{% endblock %}

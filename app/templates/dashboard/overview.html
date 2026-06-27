@@ -1,60 +1,60 @@
 {% extends "base.html" %}
 {% block title %}Dashboard · Eternal Vanguard{% endblock %}
 {% block content %}
-<div class="max-w-6xl mx-auto px-6 py-12" data-page="dashboard">
+<div class="max-w-7xl mx-auto px-6 py-12" data-page="dashboard">
 
   <section data-section="hero" class="mb-12">
     <p class="text-sm text-secondary uppercase tracking-wider mb-2">
-      Royaume {{ kingdom }}{% if season %} · {{ season.name }}{% endif %}
+      Kingdom {{ kingdom }}{% if season %} · {{ season.name }}{% endif %}
     </p>
-    <h1 class="font-display text-4xl mb-4">Rapport de saison</h1>
+    <h1 class="font-display text-4xl mb-4">Season report</h1>
 
     {% if season_progress %}
     <p class="text-secondary text-sm">
-      <span data-field="day-current">Jour {{ season_progress.day_current }}</span>
+      <span data-field="day-current">Day {{ season_progress.day_current }}</span>
       {% if season_progress.day_total %}
         / {{ season_progress.day_total }}
-        · <span data-field="days-remaining">{{ season_progress.days_remaining }} jours restants</span>
+        · <span data-field="days-remaining">{{ season_progress.days_remaining }} days left</span>
       {% endif %}
-      · Début {{ season_progress.start_date }}
+      · Start {{ season_progress.start_date }}
     </p>
     {% endif %}
   </section>
 
   {% if season is none %}
     <div data-section="empty-state" class="border border-edge bg-card rounded p-8 text-center text-secondary">
-      <p>Aucune saison active pour le moment.</p>
+      <p>No active season.</p>
     </div>
 
   {% elif not has_scores %}
     <div data-section="empty-state" class="border border-edge bg-card rounded p-8 text-center text-secondary">
-      <p>La saison est ouverte mais aucune notation n'est encore disponible.</p>
-      <p class="text-muted text-sm mt-2">Un export cumulatif doit être ingéré pour calculer les notes.</p>
+      <p>Season is open but no scoring data has been computed yet.</p>
+      <p class="text-muted text-sm mt-2">A cumulative snapshot must be ingested first.</p>
     </div>
 
   {% else %}
 
     <section data-section="stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
       <div data-stat="scored" class="border border-edge bg-card rounded p-4">
-        <p class="text-xs text-muted uppercase tracking-wider mb-2">Membres notés</p>
+        <p class="text-xs text-muted uppercase tracking-wider mb-2">Scored members</p>
         <p class="font-mono text-2xl">{{ stats.count_scored }}</p>
       </div>
       <div data-stat="farms" class="border border-edge bg-card rounded p-4">
-        <p class="text-xs text-muted uppercase tracking-wider mb-2">Comptes-fermes</p>
+        <p class="text-xs text-muted uppercase tracking-wider mb-2">Farm accounts</p>
         <p class="font-mono text-2xl">{{ stats.count_farm }}</p>
       </div>
       <div data-stat="mp-avg" class="border border-edge bg-card rounded p-4">
-        <p class="text-xs text-muted uppercase tracking-wider mb-2">M/P% moyen</p>
+        <p class="text-xs text-muted uppercase tracking-wider mb-2">Avg M/P%</p>
         <p class="font-mono text-2xl">{{ "%.2f"|format(stats.mp_avg) }}<span class="text-base text-muted">%</span></p>
       </div>
       <div data-stat="missing" class="border border-edge bg-card rounded p-4">
-        <p class="text-xs text-muted uppercase tracking-wider mb-2">Absents</p>
+        <p class="text-xs text-muted uppercase tracking-wider mb-2">Missing</p>
         <p class="font-mono text-2xl">{{ stats.count_missing }}</p>
       </div>
     </section>
 
     <section data-section="distribution" class="mb-12">
-      <h2 class="font-display text-2xl mb-4">Distribution des notes</h2>
+      <h2 class="font-display text-2xl mb-4">Grade distribution</h2>
       <div class="grid grid-cols-5 gap-3">
         {% for grade in ['S', 'A', 'B', 'C', 'D'] %}
           <div data-grade="{{ grade|lower }}" class="border border-edge bg-card rounded p-4 text-center">
@@ -66,17 +66,34 @@
     </section>
 
     <section data-section="top-performers" class="mb-12">
-      <h2 class="font-display text-2xl mb-4">Tête de la Vanguard</h2>
-      <div class="border border-edge bg-card rounded overflow-hidden">
-        <table class="w-full text-sm">
+      <div class="flex items-baseline justify-between mb-4">
+        <h2 class="font-display text-2xl">Top of the Vanguard</h2>
+        <p class="text-xs text-muted">Scroll horizontally for full breakdown →</p>
+      </div>
+
+      <div class="border border-edge bg-card rounded overflow-x-auto">
+        <table class="w-full text-sm whitespace-nowrap">
           <thead class="bg-elevated text-xs text-muted uppercase tracking-wider">
             <tr>
-              <th class="px-4 py-3 text-left">Rang</th>
-              <th class="px-4 py-3 text-left">Opérateur</th>
-              <th class="px-4 py-3 text-center">Note</th>
-              <th class="px-4 py-3 text-right">M/P %</th>
-              <th class="px-4 py-3 text-right">Mérites</th>
-              <th class="px-4 py-3 text-right">Puissance</th>
+              <th class="px-4 py-3 text-left">Rank</th>
+              <th class="px-4 py-3 text-left">Operator</th>
+              <th class="px-4 py-3 text-center">Grade</th>
+              <th class="px-4 py-3 text-right" data-col="mp">M/P %</th>
+              <th class="px-4 py-3 text-right" data-col="merits-total">Merits</th>
+              <th class="px-4 py-3 text-right" data-col="power">Power</th>
+              <th class="px-4 py-3 text-right" data-col="peak-power">Peak power</th>
+              <th class="px-4 py-3 text-right" data-col="deaths">Deaths T4/T5</th>
+              <th class="px-4 py-3 text-right" data-col="healing">Healing T4/T5</th>
+              <th class="px-4 py-3 text-right" data-col="destruction">Destruction</th>
+              <th class="px-4 py-3 text-right" data-col="construction">Build time</th>
+              <th class="px-4 py-3 text-right" data-col="behemoth">Behemoths</th>
+              <th class="px-4 py-3 text-right" data-col="harvest">Harvest</th>
+              <th class="px-4 py-3 text-right" data-col="donations">Donations</th>
+              <th class="px-4 py-3 text-right" data-col="merits-inf">Inf merits</th>
+              <th class="px-4 py-3 text-right" data-col="merits-cav">Cav merits</th>
+              <th class="px-4 py-3 text-right" data-col="merits-arc">Archers merits</th>
+              <th class="px-4 py-3 text-right" data-col="merits-mag">Mage merits</th>
+              <th class="px-4 py-3 text-right" data-col="merits-oth">Other merits</th>
             </tr>
           </thead>
           <tbody>
@@ -86,8 +103,21 @@
               <td class="px-4 py-3">{{ row.name }}</td>
               <td class="px-4 py-3 text-center" data-grade="{{ row.grade|lower }}">{{ row.grade }}</td>
               <td class="px-4 py-3 text-right font-mono">{{ "%.1f"|format(row.mp_ratio) }}%</td>
-              <td class="px-4 py-3 text-right font-mono">{{ row.merits_short }}</td>
-              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.power_short }}</td>
+              <td class="px-4 py-3 text-right font-mono">{{ row.merits_total_short }}</td>
+              <td class="px-4 py-3 text-right font-mono">{{ row.power_short }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.peak_power_short }}</td>
+              <td class="px-4 py-3 text-right font-mono">{{ row.deaths_t45_short }}</td>
+              <td class="px-4 py-3 text-right font-mono">{{ row.healing_t45_short }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.destruction_time_short }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.build_time_short }}</td>
+              <td class="px-4 py-3 text-right font-mono">{{ row.behemoth_victories }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.harvest_short }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.alliance_donations_short }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.merits_infantry_short }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.merits_cavalry_short }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.merits_archers_short }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.merits_magic_short }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.merits_other_short }}</td>
             </tr>
             {% endfor %}
           </tbody>
