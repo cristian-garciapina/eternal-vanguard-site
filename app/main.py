@@ -4,7 +4,7 @@ Eternal Vanguard — main FastAPI application.
 - `/`              public landing
 - `/login`         public
 - `/logout`        public (POST)
-- `/dashboard`     authenticated
+- `/dashboard`     authenticated, all members
 - `/api/ingest`    bearer-token protected
 - `/healthz`       public
 """
@@ -15,8 +15,15 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
 
-from .auth import RequiresLoginException, get_current_user, require_user
+from . import queries
+from .auth import (
+    RequiresLoginException,
+    get_current_user,
+    get_db,
+    require_user,
+)
 from .auth_routes import router as auth_router
 from .ingest import router as ingest_router
 from .models import User
@@ -28,7 +35,7 @@ STATIC_DIR = BASE_DIR / "static"
 app = FastAPI(
     title="Eternal Vanguard",
     description="Alliance management website for Call of Dragons — Kingdom 193.",
-    version="0.2.1",
+    version="0.3.0",
     docs_url="/_docs",
     redoc_url=None,
 )
@@ -45,11 +52,7 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 # --- Exception handlers ---------------------------------------------------
 @app.exception_handler(RequiresLoginException)
 async def requires_login_handler(request: Request, exc: RequiresLoginException):
-    """Anonymous visitor on a protected route → redirect to /login."""
-    return RedirectResponse(
-        url=f"/login?next={exc.next_url}",
-        status_code=303,
-    )
+    return RedirectResponse(url=f"/login?next={exc.next_url}", status_code=303)
 
 
 # --- Routes ---------------------------------------------------------------
@@ -73,18 +76,53 @@ async def landing(
 async def dashboard_overview(
     request: Request,
     user: User = Depends(require_user),
+    db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    """Dashboard placeholder — real data wiring in the next step."""
-    placeholder_stats = {
-        "total_members": 142,
-        "total_power": "—",
-        "total_merit": "—",
-        "active_players": "—",
+    """Alliance overview — visible to any authenticated member."""
+    context: dict = {
+        "user": user,
+        "kingdom": 193,
+        "season": None,
+        "season_progress": None,
+        "snapshot": None,
+        "stats": None,
+        "distribution": {},
+        "top_performers": [],
+        "has_scores": False,
     }
+
+    season = queries.get_active_season(db)
+    if season is None:
+        return templates.TemplateResponse(
+            request=request, name="dashboard/overview.html", context=context
+        )
+
+    context["season"] = season
+    context["season_progress"] = queries.compute_season_progress(season)
+
+    snapshot = queries.get_scoring_snapshot(db, season)
+    if snapshot is None or not queries.has_any_scores(db, snapshot.id):
+        return templates.TemplateResponse(
+            request=request, name="dashboard/overview.html", context=context
+        )
+
+    stats = queries.get_dashboard_stats(db, season.id, snapshot.id)
+    stats["count_missing"] = queries.get_missing_count(db, season, snapshot.id)
+
+    context.update(
+        {
+            "snapshot": snapshot,
+            "stats": stats,
+            "distribution": queries.get_grade_distribution(db, season.id, snapshot.id),
+            "top_performers": queries.get_top_performers(
+                db, season.id, snapshot.id, limit=15
+            ),
+            "has_scores": True,
+        }
+    )
+
     return templates.TemplateResponse(
-        request=request,
-        name="dashboard/overview.html",
-        context={"stats": placeholder_stats, "user": user},
+        request=request, name="dashboard/overview.html", context=context
     )
 
 

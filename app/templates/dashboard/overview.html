@@ -1,67 +1,101 @@
 {% extends "base.html" %}
-
 {% block title %}Dashboard · Eternal Vanguard{% endblock %}
-
 {% block content %}
-<section class="max-w-7xl mx-auto px-6 pt-12 pb-6">
-  <p class="font-mono text-xs uppercase tracking-[0.3em] text-muted">Alliance overview</p>
-  <h1 class="font-display text-4xl mt-3">Dashboard</h1>
-  <p class="text-secondary mt-2 max-w-2xl">
-    Live snapshot of {{ stats.total_members if stats else "the alliance" }}'s strength
-    and contribution. Numbers refresh as new exports are ingested.
-  </p>
-</section>
+<div class="max-w-6xl mx-auto px-6 py-12" data-page="dashboard">
 
-<div class="signet max-w-7xl mx-auto my-8"></div>
+  <section data-section="hero" class="mb-12">
+    <p class="text-sm text-secondary uppercase tracking-wider mb-2">
+      Royaume {{ kingdom }}{% if season %} · {{ season.name }}{% endif %}
+    </p>
+    <h1 class="font-display text-4xl mb-4">Rapport de saison</h1>
 
-<!-- Stat cards ------------------------------------------------------------ -->
-<section class="max-w-7xl mx-auto px-6 grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-  <article class="bg-card border border-edge rounded p-5">
-    <p class="font-mono text-xs uppercase tracking-widest text-muted">Total members</p>
-    <p class="font-display text-4xl mt-3">{{ stats.total_members }}</p>
-  </article>
-  <article class="bg-card border border-edge rounded p-5">
-    <p class="font-mono text-xs uppercase tracking-widest text-muted">Total power</p>
-    <p class="font-display text-4xl mt-3">{{ stats.total_power }}</p>
-  </article>
-  <article class="bg-card border border-edge rounded p-5">
-    <p class="font-mono text-xs uppercase tracking-widest text-muted">Total merit</p>
-    <p class="font-display text-4xl mt-3">{{ stats.total_merit }}</p>
-  </article>
-  <article class="bg-card border border-edge rounded p-5">
-    <p class="font-mono text-xs uppercase tracking-widest text-muted">Active players</p>
-    <p class="font-display text-4xl mt-3">{{ stats.active_players }}</p>
-  </article>
-</section>
+    {% if season_progress %}
+    <p class="text-secondary text-sm">
+      <span data-field="day-current">Jour {{ season_progress.day_current }}</span>
+      {% if season_progress.day_total %}
+        / {{ season_progress.day_total }}
+        · <span data-field="days-remaining">{{ season_progress.days_remaining }} jours restants</span>
+      {% endif %}
+      · Début {{ season_progress.start_date }}
+    </p>
+    {% endif %}
+  </section>
 
-<!-- Charts + top performers ---------------------------------------------- -->
-<section class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-4 mb-12">
-  <div class="lg:col-span-2 bg-card border border-edge rounded p-6">
-    <div class="flex justify-between items-baseline">
-      <h2 class="font-display text-2xl">Power distribution</h2>
-      <span class="text-muted text-xs font-mono">last snapshot</span>
+  {% if season is none %}
+    <div data-section="empty-state" class="border border-edge bg-card rounded p-8 text-center text-secondary">
+      <p>Aucune saison active pour le moment.</p>
     </div>
-    <div class="mt-6 h-64 flex items-center justify-center text-muted text-sm border border-dashed border-edge rounded">
-      Chart placeholder — ingestion pipeline pending (Day 2)
-    </div>
-  </div>
 
-  <div class="bg-card border border-edge rounded p-6">
-    <div class="flex justify-between items-baseline">
-      <h2 class="font-display text-2xl">Top performers</h2>
-      <span class="text-gold text-xs font-mono">S-tier</span>
+  {% elif not has_scores %}
+    <div data-section="empty-state" class="border border-edge bg-card rounded p-8 text-center text-secondary">
+      <p>La saison est ouverte mais aucune notation n'est encore disponible.</p>
+      <p class="text-muted text-sm mt-2">Un export cumulatif doit être ingéré pour calculer les notes.</p>
     </div>
-    <ul class="mt-6 space-y-1 text-sm">
-      {% for i in range(5) %}
-      <li class="flex justify-between items-center py-2 border-b border-edge last:border-b-0">
-        <span class="text-muted font-mono">— —</span>
-        <span class="text-secondary">awaiting data</span>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-</section>
 
-<!-- Chart.js will be wired on Day 2 once data flows. -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  {% else %}
+
+    <section data-section="stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+      <div data-stat="scored" class="border border-edge bg-card rounded p-4">
+        <p class="text-xs text-muted uppercase tracking-wider mb-2">Membres notés</p>
+        <p class="font-mono text-2xl">{{ stats.count_scored }}</p>
+      </div>
+      <div data-stat="farms" class="border border-edge bg-card rounded p-4">
+        <p class="text-xs text-muted uppercase tracking-wider mb-2">Comptes-fermes</p>
+        <p class="font-mono text-2xl">{{ stats.count_farm }}</p>
+      </div>
+      <div data-stat="mp-avg" class="border border-edge bg-card rounded p-4">
+        <p class="text-xs text-muted uppercase tracking-wider mb-2">M/P% moyen</p>
+        <p class="font-mono text-2xl">{{ "%.2f"|format(stats.mp_avg) }}<span class="text-base text-muted">%</span></p>
+      </div>
+      <div data-stat="missing" class="border border-edge bg-card rounded p-4">
+        <p class="text-xs text-muted uppercase tracking-wider mb-2">Absents</p>
+        <p class="font-mono text-2xl">{{ stats.count_missing }}</p>
+      </div>
+    </section>
+
+    <section data-section="distribution" class="mb-12">
+      <h2 class="font-display text-2xl mb-4">Distribution des notes</h2>
+      <div class="grid grid-cols-5 gap-3">
+        {% for grade in ['S', 'A', 'B', 'C', 'D'] %}
+          <div data-grade="{{ grade|lower }}" class="border border-edge bg-card rounded p-4 text-center">
+            <p class="font-display text-3xl mb-2" data-field="grade-letter">{{ grade }}</p>
+            <p class="font-mono text-xl" data-field="grade-count">{{ distribution.get(grade, 0) }}</p>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section data-section="top-performers" class="mb-12">
+      <h2 class="font-display text-2xl mb-4">Tête de la Vanguard</h2>
+      <div class="border border-edge bg-card rounded overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-elevated text-xs text-muted uppercase tracking-wider">
+            <tr>
+              <th class="px-4 py-3 text-left">Rang</th>
+              <th class="px-4 py-3 text-left">Opérateur</th>
+              <th class="px-4 py-3 text-center">Note</th>
+              <th class="px-4 py-3 text-right">M/P %</th>
+              <th class="px-4 py-3 text-right">Mérites</th>
+              <th class="px-4 py-3 text-right">Puissance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in top_performers %}
+            <tr data-rank="{{ loop.index }}" class="border-t border-edge">
+              <td class="px-4 py-3 font-mono text-muted">{{ "%02d"|format(loop.index) }}</td>
+              <td class="px-4 py-3">{{ row.name }}</td>
+              <td class="px-4 py-3 text-center" data-grade="{{ row.grade|lower }}">{{ row.grade }}</td>
+              <td class="px-4 py-3 text-right font-mono">{{ "%.1f"|format(row.mp_ratio) }}%</td>
+              <td class="px-4 py-3 text-right font-mono">{{ row.merits_short }}</td>
+              <td class="px-4 py-3 text-right font-mono text-muted">{{ row.power_short }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  {% endif %}
+
+</div>
 {% endblock %}
