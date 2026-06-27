@@ -20,9 +20,9 @@
   <style>
     /* --- Eternal Vanguard design tokens --------------------------------- */
     :root {
-      --color-bg-base:      #060912;  /* deep night */
-      --color-bg-card:      #0F1524;  /* card surface */
-      --color-bg-elevated:  #182239;  /* hovered / elevated surface */
+      --color-bg-base:      #060912;
+      --color-bg-card:      #0F1524;
+      --color-bg-elevated:  #182239;
       --color-border:       #1E293B;
       --color-ring:         #334155;
 
@@ -30,10 +30,10 @@
       --color-text-secondary: #94A3B8;
       --color-text-muted:     #64748B;
 
-      --color-cyan:        #22D3EE;   /* glacial cyan — interactive, highlights */
-      --color-cyan-bright: #06B6D4;   /* CTA */
-      --color-gold:        #DDB872;   /* pale gold — S-tier, top players */
-      --color-violet:      #A78BFA;   /* royal violet — alternate accent */
+      --color-cyan:        #22D3EE;
+      --color-cyan-bright: #06B6D4;
+      --color-gold:        #DDB872;
+      --color-violet:      #A78BFA;
 
       --font-display: 'Cormorant', Georgia, serif;
       --font-body:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -45,7 +45,6 @@
       background-color: var(--color-bg-base);
       color: var(--color-text-primary);
       min-height: 100vh;
-      /* Subtle starlight from above — single radial wash, restrained. */
       background-image: radial-gradient(
         ellipse 1200px 600px at top,
         rgba(34, 211, 238, 0.07) 0%,
@@ -65,7 +64,6 @@
     .bg-elevated { background-color: var(--color-bg-elevated); }
     .border-edge { border-color: var(--color-border); }
 
-    /* Starfield — tiny pinpricks, fixed in place, very low opacity */
     .starfield {
       position: fixed;
       inset: 0;
@@ -83,7 +81,6 @@
         radial-gradient(1px 1px at 55% 72%, rgba(241, 245, 249, 0.30), transparent 50%);
     }
 
-    /* The "signet" — brand signature divider. A single gold dot riding a hairline. */
     .signet {
       position: relative;
       height: 1px;
@@ -102,7 +99,6 @@
       box-shadow: 0 0 10px rgba(221, 184, 114, 0.5);
     }
 
-    /* Reduced motion respect */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
@@ -117,22 +113,43 @@
 <body class="antialiased">
   <div class="starfield" aria-hidden="true"></div>
 
-  <header class="relative z-10 border-b border-edge">
+  <header class="relative z-10 border-b border-edge" data-component="topbar">
     <nav class="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
-      <a href="/" class="font-display text-2xl tracking-wider">
+      <a href="/" class="font-display text-2xl tracking-wider" data-nav="wordmark">
         Eternal <span class="text-gold">Vanguard</span>
       </a>
-      <ul class="hidden md:flex items-center gap-8 text-sm">
+
+      <ul class="hidden md:flex items-center gap-8 text-sm" data-nav="primary">
         <li><a href="/" class="hover:text-cyan-300 transition-colors">Home</a></li>
-        <li><a href="/roster" class="hover:text-cyan-300 transition-colors">Roster</a></li>
-        <li><a href="/dashboard" class="hover:text-cyan-300 transition-colors">Dashboard</a></li>
-        <li><a href="#" class="text-muted hover:text-cyan-300 transition-colors">Events</a></li>
-        <li><a href="#" class="text-muted hover:text-cyan-300 transition-colors">Recruit</a></li>
+        {% if user %}
+          <li><a href="/dashboard" class="hover:text-cyan-300 transition-colors">Dashboard</a></li>
+          <li><a href="/roster" class="hover:text-cyan-300 transition-colors">Roster</a></li>
+        {% endif %}
       </ul>
-      <a href="#"
-         class="text-sm px-4 py-2 border border-edge rounded hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-        Sign in
-      </a>
+
+      <div class="flex items-center gap-3" data-nav="session">
+        {% if user %}
+          <span class="text-sm text-secondary hidden sm:inline">
+            Signed in as <span class="text-primary font-medium" data-field="username">{{ user.username }}</span>
+            {% if user.role == 'staff' %}
+              <span class="ml-1 text-xs uppercase tracking-wider text-gold" data-field="role-badge">staff</span>
+            {% endif %}
+          </span>
+          <form method="post" action="/logout" class="inline">
+            <button type="submit"
+                    class="text-sm px-4 py-2 border border-edge rounded hover:border-cyan-400 hover:text-cyan-300 transition-colors"
+                    data-action="logout">
+              Sign out
+            </button>
+          </form>
+        {% else %}
+          <a href="/login"
+             class="text-sm px-4 py-2 border border-edge rounded hover:border-cyan-400 hover:text-cyan-300 transition-colors"
+             data-action="login">
+            Sign in
+          </a>
+        {% endif %}
+      </div>
     </nav>
   </header>
 
@@ -143,7 +160,7 @@
   <footer class="relative z-10 border-t border-edge mt-24">
     <div class="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row justify-between gap-3 text-sm text-muted">
       <span>Kingdom 193 · Call of Dragons</span>
-      <span class="font-mono text-xs">v0.1.0</span>
+      <span class="font-mono text-xs">v0.4.0</span>
     </div>
   </footer>
 </body>
