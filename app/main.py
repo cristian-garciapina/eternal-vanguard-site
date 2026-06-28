@@ -31,6 +31,7 @@ from .signup_routes import router as signup_router
 from .staff_routes import router as staff_router
 from .profile_routes import router as profile_router
 from .settings_routes import router as settings_router
+from .seasons_routes import router as seasons_router
 from .ingest import router as ingest_router
 from .recruitment_routes import router as recruitment_router
 from .models import User
@@ -54,6 +55,7 @@ app.include_router(staff_router)
 app.include_router(profile_router)
 app.include_router(settings_router)
 app.include_router(recruitment_router)
+app.include_router(seasons_router)
 
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

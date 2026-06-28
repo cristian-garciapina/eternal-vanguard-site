@@ -280,3 +280,124 @@ async def ingest_excel(
         "members_updated": members_updated,
         "columns_detected": sorted(seen_fields),
     }
+
+
+
+async def _ingest_upload(
+    session,
+    file,
+    *,
+    ingested_by: str,
+) -> dict:
+    """Reusable ingestion entrypoint for both the API endpoint and the
+    staff UI. Wraps the same parsing/persistence path used by
+    /api/ingest. Returns a dict with snapshot_id, filename, rows.
+    """
+    from io import BytesIO
+    import pandas as pd
+    from datetime import datetime
+    from sqlalchemy import select as _select
+    from .models import Snapshot as _Snapshot, Stat as _Stat, Member as _Member
+
+    raw = await file.read()
+    if not file.filename:
+        raise ValueError("Missing filename.")
+    date_start, date_end = _extract_dates_from_filename(file.filename)
+
+    season = _get_active_season(session)
+    if season is None:
+        raise ValueError("No active season.")
+
+    existing = session.scalar(
+        _select(_Snapshot)
+        .where(_Snapshot.source_filename == file.filename)
+        .where(_Snapshot.date_start == date_start)
+        .where(_Snapshot.date_end == date_end)
+    )
+    if existing is not None:
+        raise ValueError(f"Snapshot already ingested (id={existing.id}).")
+
+    if date_start != date_end and _get_setting_bool(
+        session, "ingest.reject_overlapping_periods", default=True
+    ):
+        if _detect_overlap(session, season.id, date_start, date_end):
+            raise ValueError("Overlapping snapshot period detected.")
+
+    df = pd.read_excel(BytesIO(raw))
+    df.columns = [_normalize(c) for c in df.columns]
+
+    snap = _Snapshot(
+        season_id=season.id,
+        date_start=date_start,
+        date_end=date_end,
+        source_filename=file.filename,
+        row_count=len(df),
+        ingested_at=datetime.utcnow(),
+        ingested_by=ingested_by,
+    )
+    session.add(snap)
+    session.flush()
+
+    # Reuse the same field mapping as the route by importing the constants
+    from . import ingest as _self
+    HEADER_MAP = getattr(_self, 'HEADER_MAP', None)
+    REQUIRED_FIELDS = getattr(_self, 'REQUIRED_FIELDS', {"character_id", "current_name", "power", "merits_total"})
+
+    if HEADER_MAP is None:
+        raise ValueError("HEADER_MAP not found in ingest.py — refactor needed.")
+
+    rows_inserted = 0
+    for _, row in df.iterrows():
+        mapped = {}
+        for col_value, field in HEADER_MAP.items():
+            if col_value in row.index:
+                mapped[field] = row[col_value]
+        if not REQUIRED_FIELDS.issubset(mapped.keys()):
+            continue
+
+        try:
+            cid = _parse_int(mapped["character_id"])
+        except Exception:
+            continue
+
+        member = session.get(_Member, cid)
+        if member is None:
+            member = _Member(
+                character_id=cid,
+                current_name=str(mapped["current_name"])[:64],
+                in_alliance=True,
+            )
+            session.add(member)
+        else:
+            member.current_name = str(mapped["current_name"])[:64]
+            member.last_seen_at = datetime.utcnow()
+
+        stat = _Stat(
+            snapshot_id=snap.id,
+            character_id=cid,
+            rank=_parse_int(mapped.get("rank", 0)) if mapped.get("rank") else None,
+            power=_parse_int(mapped.get("power", 0)),
+            peak_power=_parse_int(mapped.get("peak_power", 0)) if mapped.get("peak_power") else None,
+            deaths_t45=_parse_int(mapped.get("deaths_t45", 0)),
+            destruction_time=_parse_int(mapped.get("destruction_time", 0)),
+            merits_total=_parse_int(mapped.get("merits_total", 0)),
+            merits_infantry=_parse_int(mapped.get("merits_infantry", 0)),
+            merits_cavalry=_parse_int(mapped.get("merits_cavalry", 0)),
+            merits_archers=_parse_int(mapped.get("merits_archers", 0)),
+            merits_magic=_parse_int(mapped.get("merits_magic", 0)),
+            merits_other=_parse_int(mapped.get("merits_other", 0)),
+            healing_t45=_parse_int(mapped.get("healing_t45", 0)),
+            harvest=_parse_int(mapped.get("harvest", 0)),
+            build_time=_parse_int(mapped.get("build_time", 0)),
+            alliance_donations=_parse_int(mapped.get("alliance_donations", 0)),
+            behemoth_victories=_parse_int(mapped.get("behemoth_victories", 0)),
+        )
+        session.add(stat)
+        rows_inserted += 1
+
+    session.commit()
+    return {
+        "snapshot_id": snap.id,
+        "filename": file.filename,
+        "rows": rows_inserted,
+    }
