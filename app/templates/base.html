@@ -124,14 +124,21 @@
         {% if user %}
           <li><a href="/dashboard" class="hover:text-cyan-300 transition-colors">Dashboard</a></li>
           <li><a href="/roster" class="hover:text-cyan-300 transition-colors">Roster</a></li>
+          <li><a href="/profile" class="hover:text-cyan-300 transition-colors">Profile</a></li>
+          {% if user.role in ['staff', 'owner'] %}
+          <li><a href="/staff/registrations" class="hover:text-cyan-300 transition-colors">Pending</a></li>
+          <li><a href="/staff/users" class="hover:text-cyan-300 transition-colors">Users</a></li>
+          {% endif %}
         {% endif %}
       </ul>
 
       <div class="flex items-center gap-3" data-nav="session">
         {% if user %}
           <span class="text-sm text-secondary hidden sm:inline">
-            Signed in as <span class="text-primary font-medium" data-field="username">{{ user.username }}</span>
-            {% if user.role == 'staff' %}
+            Logged in as <span class="text-primary font-medium" data-field="username">{{ user.username }}</span>
+            {% if user.role == 'owner' %}
+              <span class="ml-1 text-xs uppercase tracking-wider text-violet-400" data-field="role-badge">owner</span>
+            {% elif user.role == 'staff' %}
               <span class="ml-1 text-xs uppercase tracking-wider text-gold" data-field="role-badge">staff</span>
             {% endif %}
           </span>
@@ -139,14 +146,14 @@
             <button type="submit"
                     class="text-sm px-4 py-2 border border-edge rounded hover:border-cyan-400 hover:text-cyan-300 transition-colors"
                     data-action="logout">
-              Sign out
+              Log out
             </button>
           </form>
         {% else %}
           <a href="/login"
              class="text-sm px-4 py-2 border border-edge rounded hover:border-cyan-400 hover:text-cyan-300 transition-colors"
              data-action="login">
-            Sign in
+            Log in
           </a>
         {% endif %}
       </div>

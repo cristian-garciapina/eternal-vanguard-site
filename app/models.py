@@ -390,6 +390,14 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
+    # Self-service registration metadata
+    pending_approval: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    submitted_in_game_name: Mapped[Optional[str]] = mapped_column(String(64))
+    submitted_rank: Mapped[Optional[str]] = mapped_column(String(8))
+    submitted_server: Mapped[Optional[int]] = mapped_column(Integer)
+    submitted_alliance_tag: Mapped[Optional[str]] = mapped_column(String(16))
+
     sessions: Mapped[list["UserSession"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

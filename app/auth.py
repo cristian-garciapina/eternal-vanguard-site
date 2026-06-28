@@ -147,10 +147,20 @@ def require_user(
 
 
 def require_staff(user: User = Depends(require_user)) -> User:
-    """Forces staff role. 403 if member-only."""
-    if user.role != "staff":
+    """Forces staff-level access (staff or owner). 403 if member-only."""
+    if user.role not in ("staff", "owner"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Staff only.",
+        )
+    return user
+
+
+def require_owner(user: User = Depends(require_user)) -> User:
+    """Forces owner role. 403 otherwise."""
+    if user.role != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Owner only.",
         )
     return user

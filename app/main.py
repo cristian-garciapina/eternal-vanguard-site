@@ -27,6 +27,9 @@ from .auth import (
     require_user,
 )
 from .auth_routes import router as auth_router
+from .signup_routes import router as signup_router
+from .staff_routes import router as staff_router
+from .profile_routes import router as profile_router
 from .ingest import router as ingest_router
 from .models import User
 
@@ -44,6 +47,9 @@ app = FastAPI(
 
 app.include_router(ingest_router)
 app.include_router(auth_router)
+app.include_router(signup_router)
+app.include_router(staff_router)
+app.include_router(profile_router)
 
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
