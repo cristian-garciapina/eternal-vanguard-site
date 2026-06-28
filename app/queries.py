@@ -338,3 +338,39 @@ def count_total_roster(db: Session, season_id: int, snapshot_id: int) -> int:
         )
         or 0
     )
+
+
+# --- Farm accounts -------------------------------------------------------
+def count_farms(db: Session, season_id: int, snapshot_id: int) -> int:
+    return (
+        db.scalar(
+            select(func.count(Score.id))
+            .where(Score.season_id == season_id)
+            .where(Score.snapshot_id == snapshot_id)
+            .where(Score.is_farm_account == True)
+        )
+        or 0
+    )
+
+
+def get_farm_accounts(
+    db: Session, season_id: int, snapshot_id: int
+) -> list[dict]:
+    """All farm accounts for the snapshot, sorted by start power desc."""
+    rows = db.execute(
+        select(Score, Member, Stat)
+        .join(Member, Score.character_id == Member.character_id)
+        .join(
+            Stat,
+            and_(
+                Stat.character_id == Score.character_id,
+                Stat.snapshot_id == Score.snapshot_id,
+            ),
+        )
+        .where(Score.season_id == season_id)
+        .where(Score.snapshot_id == snapshot_id)
+        .where(Score.is_farm_account == True)
+        .order_by(Score.start_power.desc())
+    ).all()
+
+    return [_row_to_dict(score, member, stat) for score, member, stat in rows]

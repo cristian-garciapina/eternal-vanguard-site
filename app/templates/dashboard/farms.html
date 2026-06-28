@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Farms · Eternal Vanguard{% endblock %}
+{% block content %}
+<div class="max-w-full mx-auto px-6 py-12" data-page="farms">
+
+  <section data-section="hero" class="mb-8">
+    <p class="text-sm text-secondary uppercase tracking-wider mb-2">
+      Kingdom {{ kingdom }}{% if season %} · {{ season.name }}{% endif %}
+    </p>
+    <h1 class="font-display text-4xl mb-2">Farm accounts</h1>
+    <p class="text-secondary text-sm">
+      Accounts with <span class="font-mono text-primary">≤ 15M</span> start power
+      are excluded from scoring. {% if total %}<span class="font-mono text-primary">{{ total }}</span> in this season.{% endif %}
+    </p>
+  </section>
+
+  {% if season is none %}
+    <div data-section="empty-state" class="border border-edge bg-card rounded p-8 text-center text-secondary">
+      <p>No active season.</p>
+    </div>
+
+  {% elif snapshot is none %}
+    <div data-section="empty-state" class="border border-edge bg-card rounded p-8 text-center text-secondary">
+      <p>No scoring snapshot yet for this season.</p>
+    </div>
+
+  {% elif not farms %}
+    <div data-section="empty-state" class="border border-edge bg-card rounded p-8 text-center text-secondary">
+      <p>No farm accounts in this snapshot.</p>
+    </div>
+
+  {% else %}
+
+    <section data-section="grid">
+      <div class="border border-edge bg-card rounded overflow-x-auto">
+        <table class="w-full text-sm whitespace-nowrap" data-table="farms">
+          <thead class="bg-elevated text-xs text-muted uppercase tracking-wider">
+            <tr>
+              <th class="px-3 py-3 text-left">#</th>
+              <th class="px-3 py-3 text-left">Player</th>
+              <th class="px-3 py-3 text-right">Player ID</th>
+              <th class="px-3 py-3 text-right">Start power</th>
+              <th class="px-3 py-3 text-right">Current power</th>
+              <th class="px-3 py-3 text-right">Merits</th>
+              <th class="px-3 py-3 text-right">Behemoths</th>
+              <th class="px-3 py-3 text-right">Alliance donations</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in farms %}
+            <tr data-rank="{{ loop.index }}" class="border-t border-edge">
+              <td class="px-3 py-2 font-mono text-muted text-xs">{{ loop.index }}</td>
+              <td class="px-3 py-2">{{ row.name }}</td>
+              <td class="px-3 py-2 text-right font-mono text-muted">{{ row.character_id }}</td>
+              <td class="px-3 py-2 text-right font-mono">{{ row.start_power_short }}</td>
+              <td class="px-3 py-2 text-right font-mono">{{ row.end_power_short }}</td>
+              <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_total_short }}</td>
+              <td class="px-3 py-2 text-right font-mono">{{ row.behemoth_victories }}</td>
+              <td class="px-3 py-2 text-right font-mono text-muted">{{ row.alliance_donations_short }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -79,6 +79,47 @@ async def landing(
     )
 
 
+
+
+
+# --- Farm accounts (authenticated, all members) -------------------------
+@app.get("/farms", response_class=HTMLResponse)
+async def farms(
+    request: Request,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    """Read-only listing of accounts excluded from scoring (start power ≤ 15M)."""
+    context: dict = {
+        "user": user,
+        "kingdom": 193,
+        "season": None,
+        "snapshot": None,
+        "farms": [],
+        "total": 0,
+    }
+
+    season = queries.get_active_season(db)
+    if season is None:
+        return templates.TemplateResponse(
+            request=request, name="dashboard/farms.html", context=context
+        )
+    context["season"] = season
+
+    snapshot = queries.get_scoring_snapshot(db, season)
+    if snapshot is None or not queries.has_any_scores(db, snapshot.id):
+        return templates.TemplateResponse(
+            request=request, name="dashboard/farms.html", context=context
+        )
+    context["snapshot"] = snapshot
+    context["total"] = queries.count_farms(db, season.id, snapshot.id)
+    context["farms"] = queries.get_farm_accounts(db, season.id, snapshot.id)
+
+    return templates.TemplateResponse(
+        request=request, name="dashboard/farms.html", context=context
+    )
+
+
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
     return {"status": "ok"}
