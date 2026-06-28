@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Users · Eternal Vanguard{% endblock %}
+{% block content %}
+<div class="max-w-full mx-auto px-6 py-12" data-page="staff-users">
+
+  <section data-section="hero" class="mb-6">
+    <p class="text-sm text-secondary uppercase tracking-wider mb-2">Staff · Kingdom {{ kingdom }}</p>
+    <h1 class="font-display text-4xl mb-2">Users</h1>
+    <p class="text-secondary text-sm">
+      All registered accounts: <span class="font-mono text-primary">{{ total }}</span>
+    </p>
+  </section>
+
+  <section data-section="filters" class="mb-6">
+    <form method="get" action="/staff/users" class="flex flex-wrap items-end gap-4">
+      <div class="flex-1 min-w-[240px]">
+        <label for="q" class="block text-xs text-muted uppercase tracking-wider mb-1">Search</label>
+        <input id="q" name="q" type="text" value="{{ filters.q }}"
+               placeholder="Username or in-game name"
+               class="w-full px-3 py-2 bg-card border border-edge rounded text-primary text-sm">
+      </div>
+
+      <div>
+        <label for="state" class="block text-xs text-muted uppercase tracking-wider mb-1">State</label>
+        <select id="state" name="state"
+                class="px-3 py-2 bg-card border border-edge rounded text-primary text-sm">
+          <option value="" {% if filters.state == "" %}selected{% endif %}>All</option>
+          <option value="active"   {% if filters.state == "active" %}selected{% endif %}>Active</option>
+          <option value="disabled" {% if filters.state == "disabled" %}selected{% endif %}>Disabled</option>
+          <option value="pending"  {% if filters.state == "pending" %}selected{% endif %}>Pending</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="role" class="block text-xs text-muted uppercase tracking-wider mb-1">Role</label>
+        <select id="role" name="role"
+                class="px-3 py-2 bg-card border border-edge rounded text-primary text-sm">
+          <option value=""       {% if filters.role == "" %}selected{% endif %}>All</option>
+          <option value="member" {% if filters.role == "member" %}selected{% endif %}>Member</option>
+          <option value="staff"  {% if filters.role == "staff" %}selected{% endif %}>Staff</option>
+          <option value="owner"  {% if filters.role == "owner" %}selected{% endif %}>Owner</option>
+        </select>
+      </div>
+
+      <div class="flex gap-2">
+        <button type="submit"
+                class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded transition-colors text-sm">
+          Apply
+        </button>
+        <a href="/staff/users"
+           class="px-4 py-2 border border-edge hover:border-cyan-400 hover:text-cyan-300 rounded transition-colors text-sm">
+          Reset
+        </a>
+      </div>
+    </form>
+  </section>
+
+  <section data-section="grid">
+    <div class="border border-edge bg-card rounded overflow-x-auto">
+      {% if rows %}
+      <table class="w-full text-sm whitespace-nowrap" data-table="users">
+        <thead class="bg-elevated text-xs text-muted uppercase tracking-wider">
+          <tr>
+            <th class="px-3 py-3 text-left">Created</th>
+            <th class="px-3 py-3 text-left">Username</th>
+            <th class="px-3 py-3 text-left">In-game name (claimed)</th>
+            <th class="px-3 py-3 text-left">Known as (DB)</th>
+            <th class="px-3 py-3 text-right">Player ID</th>
+            <th class="px-3 py-3 text-center">Rank</th>
+            <th class="px-3 py-3 text-right">Server</th>
+            <th class="px-3 py-3 text-left">Alliance</th>
+            <th class="px-3 py-3 text-center">Role</th>
+            <th class="px-3 py-3 text-center">State</th>
+            <th class="px-3 py-3 text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            {% set u = row.u %}
+            <tr class="border-t border-edge {% if row.is_self %}bg-cyan-900/10{% endif %}" data-user-id="{{ u.id }}">
+              <td class="px-3 py-2 font-mono text-xs text-muted">{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+
+              <td class="px-3 py-2">
+                {{ u.username }}
+                {% if row.is_self %}
+                  <span class="text-xs uppercase tracking-wider text-gold ml-2">you</span>
+                {% endif %}
+              </td>
+
+              <td class="px-3 py-2">{{ u.submitted_in_game_name or '—' }}</td>
+              <td class="px-3 py-2 text-muted">{{ row.member_current_name or '—' }}</td>
+              <td class="px-3 py-2 text-right font-mono">{{ u.character_id or '—' }}</td>
+              <td class="px-3 py-2 text-center font-mono text-gold">{{ u.submitted_rank or '—' }}</td>
+              <td class="px-3 py-2 text-right font-mono">{{ u.submitted_server or '—' }}</td>
+              <td class="px-3 py-2 font-mono">{{ u.submitted_alliance_tag or '—' }}</td>
+
+              <td class="px-3 py-2 text-center font-mono">
+                {% if u.role == 'owner' %}
+                  <span class="text-violet-400">owner</span>
+                {% elif u.role == 'staff' %}
+                  <span class="text-gold">staff</span>
+                {% else %}
+                  <span class="text-muted">member</span>
+                {% endif %}
+              </td>
+
+              <td class="px-3 py-2 text-center font-mono text-xs">
+                {% if u.pending_approval %}
+                  <span class="text-violet-400">pending</span>
+                {% elif u.is_active %}
+                  <span class="text-cyan-400">active</span>
+                {% else %}
+                  <span class="text-red-400">disabled</span>
+                {% endif %}
+              </td>
+
+              <td class="px-3 py-2 text-center">
+                {% if u.pending_approval %}
+                  <a href="/staff/registrations" class="text-xs px-2 py-1 border border-violet-400/50 text-violet-400 hover:bg-violet-900/20 rounded">
+                    Review →
+                  </a>
+                {% elif not row.can_act %}
+                  <span class="text-xs text-muted">no permission</span>
+                {% else %}
+                  <a href="/staff/users/{{ u.id }}/edit" class="px-2 py-1 text-xs border border-edge hover:border-cyan-400 hover:text-cyan-300 rounded">Edit</a>
+                  <form method="post" action="/staff/users/{{ u.id }}/toggle-active" class="inline ml-1">
+                    <button type="submit"
+                            class="px-2 py-1 text-xs border border-edge hover:border-cyan-400 hover:text-cyan-300 rounded">
+                      {% if u.is_active %}Disable{% else %}Enable{% endif %}
+                    </button>
+                  </form>
+
+                  <form method="post" action="/staff/users/{{ u.id }}/set-role" class="inline ml-1">
+                    <select name="new_role"
+                            class="px-1 py-1 text-xs bg-card border border-edge rounded text-primary">
+                      <option value="member" {% if u.role == 'member' %}selected{% endif %}>member</option>
+                      <option value="staff"  {% if u.role == 'staff'  %}selected{% endif %}>staff</option>
+                      {% if user.role == 'owner' %}
+                        <option value="owner" {% if u.role == 'owner' %}selected{% endif %}>owner</option>
+                      {% endif %}
+                    </select>
+                    <button type="submit"
+                            class="px-2 py-1 text-xs border border-edge hover:border-cyan-400 hover:text-cyan-300 rounded">
+                      Set
+                    </button>
+                  </form>
+
+                  <form method="post" action="/staff/users/{{ u.id }}/delete" class="inline ml-1"
+                        onsubmit="return confirm('Delete user {{ u.username }} permanently? This cannot be undone.');">
+                    <button type="submit"
+                            class="px-2 py-1 text-xs border border-red-700 text-red-300 hover:bg-red-900/30 rounded">
+                      Delete
+                    </button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="p-8 text-center text-secondary">
+        <p>No user matches the current filters.</p>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+</div>
+{% endblock %}
