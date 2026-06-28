@@ -374,3 +374,85 @@ def get_farm_accounts(
     ).all()
 
     return [_row_to_dict(score, member, stat) for score, member, stat in rows]
+
+
+# --- Top of the Vanguard (all S graders) ---------------------------------
+def get_top_grade_s(
+    db: Session, season_id: int, snapshot_id: int
+) -> list[dict]:
+    """All S-grade non-farm members for the snapshot, ordered by M/P% desc.
+
+    Replaces the fixed-N top performers list on the dashboard: 'Top of the
+    Vanguard' now means the elite tier (S grade), whatever its size is.
+    """
+    rows = db.execute(
+        select(Score, Member, Stat)
+        .join(Member, Score.character_id == Member.character_id)
+        .join(
+            Stat,
+            and_(
+                Stat.character_id == Score.character_id,
+                Stat.snapshot_id == Score.snapshot_id,
+            ),
+        )
+        .where(Score.season_id == season_id)
+        .where(Score.snapshot_id == snapshot_id)
+        .where(Score.is_farm_account == False)
+        .where(Score.grade == "S")
+        .order_by(Score.mp_ratio.desc())
+    ).all()
+
+    return [_row_to_dict(score, member, stat) for score, member, stat in rows]
+
+
+# --- Settings management -------------------------------------------------
+EDITABLE_SETTINGS = [
+    {
+        "key": "scoring.threshold.s",
+        "label": "Threshold S",
+        "kind": "float",
+        "suffix": "%",
+        "description": "Minimum M/P% for grade S (the elite).",
+    },
+    {
+        "key": "scoring.threshold.a",
+        "label": "Threshold A",
+        "kind": "float",
+        "suffix": "%",
+        "description": "Minimum M/P% for grade A.",
+    },
+    {
+        "key": "scoring.threshold.b",
+        "label": "Threshold B",
+        "kind": "float",
+        "suffix": "%",
+        "description": "Minimum M/P% for grade B.",
+    },
+    {
+        "key": "scoring.threshold.c",
+        "label": "Threshold C",
+        "kind": "float",
+        "suffix": "%",
+        "description": "Minimum M/P% for grade C. Below this is D.",
+    },
+    {
+        "key": "scoring.farm_account_power_threshold",
+        "label": "Farm cutoff (start power)",
+        "kind": "int",
+        "suffix": "",
+        "description": "Accounts with start power ≤ this value are flagged as farms and excluded from scoring.",
+    },
+]
+
+
+def load_editable_settings(db: Session) -> list[dict]:
+    """Read the editable settings + their current value from the DB."""
+    from .models import Setting
+    out = []
+    for spec in EDITABLE_SETTINGS:
+        row = db.get(Setting, spec["key"])
+        value = None
+        if row is not None and isinstance(row.value, dict):
+            value = row.value.get("v")
+        out.append({**spec, "current": value})
+    return out

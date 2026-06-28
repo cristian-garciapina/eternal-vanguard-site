@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Settings · Eternal Vanguard{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-6 py-12" data-page="staff-settings">
+
+  <section data-section="hero" class="mb-8">
+    <p class="text-sm text-secondary uppercase tracking-wider mb-2">Staff · Kingdom {{ kingdom }}</p>
+    <h1 class="font-display text-4xl mb-2">Scoring settings</h1>
+    <p class="text-secondary text-sm">
+      Adjust grade thresholds and the farm account cutoff. Saving recomputes
+      every score for the active season immediately.
+    </p>
+  </section>
+
+  {% if error %}
+  <div role="alert" class="mb-4 p-3 border border-red-700 bg-red-900/30 text-red-200 text-sm rounded">
+    {{ error }}
+  </div>
+  {% endif %}
+  {% if success %}
+  <div role="status" class="mb-4 p-3 border border-green-700 bg-green-900/30 text-green-200 text-sm rounded">
+    {{ success }}
+    {% if recompute %}
+      <div class="mt-2 font-mono text-xs text-green-300">
+        {% for k, v in recompute.items() %}
+          {{ k }}: {{ v }}{% if not loop.last %} · {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <section class="border border-edge bg-card rounded p-6">
+    <form method="post" action="/staff/settings" class="space-y-5">
+      {% for s in settings %}
+      <div>
+        <label for="{{ s.key }}" class="block text-sm text-primary mb-1">
+          {{ s.label }}
+          <span class="text-xs text-muted font-mono ml-2">{{ s.key }}</span>
+        </label>
+        <div class="flex items-center gap-2">
+          <input id="{{ s.key }}" name="{{ s.key }}" type="text"
+                 inputmode="{% if s.kind == 'int' %}numeric{% else %}decimal{% endif %}"
+                 value="{{ s.current if s.current is not none else '' }}"
+                 required
+                 class="flex-1 px-3 py-2 bg-elevated border border-edge rounded text-primary font-mono">
+          {% if s.suffix %}
+            <span class="text-secondary font-mono text-sm">{{ s.suffix }}</span>
+          {% endif %}
+        </div>
+        <p class="text-xs text-muted mt-1">{{ s.description }}</p>
+      </div>
+      {% endfor %}
+
+      <div class="pt-2 border-t border-edge">
+        <button type="submit"
+                class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded transition-colors">
+          Save &amp; recompute scores
+        </button>
+        <a href="/dashboard"
+           class="ml-2 px-4 py-2 border border-edge hover:border-cyan-400 hover:text-cyan-300 rounded transition-colors text-sm">
+          Back to dashboard
+        </a>
+      </div>
+    </form>
+  </section>
+
+  <p class="text-xs text-muted mt-6">
+    Constraint: thresholds must satisfy <span class="font-mono">S &gt; A &gt; B &gt; C</span> strictly.
+    Anything below C is graded D.
+  </p>
+
+</div>
+{% endblock %}

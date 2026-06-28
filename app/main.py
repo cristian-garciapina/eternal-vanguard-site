@@ -30,6 +30,7 @@ from .auth_routes import router as auth_router
 from .signup_routes import router as signup_router
 from .staff_routes import router as staff_router
 from .profile_routes import router as profile_router
+from .settings_routes import router as settings_router
 from .ingest import router as ingest_router
 from .models import User
 
@@ -50,6 +51,7 @@ app.include_router(auth_router)
 app.include_router(signup_router)
 app.include_router(staff_router)
 app.include_router(profile_router)
+app.include_router(settings_router)
 
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -167,9 +169,7 @@ async def dashboard_overview(
             "snapshot": snapshot,
             "stats": stats,
             "distribution": queries.get_grade_distribution(db, season.id, snapshot.id),
-            "top_performers": queries.get_top_performers(
-                db, season.id, snapshot.id, limit=20
-            ),
+            "top_performers": queries.get_top_grade_s(db, season.id, snapshot.id),
             "has_scores": True,
         }
     )

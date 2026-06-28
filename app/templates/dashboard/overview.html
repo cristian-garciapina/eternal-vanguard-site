@@ -67,12 +67,20 @@
 
     <section data-section="top-performers" class="mb-12">
       <div class="flex items-baseline justify-between mb-4">
-        <h2 class="font-display text-2xl">Top of the Vanguard</h2>
+        <div>
+          <h2 class="font-display text-2xl">Top of the Vanguard</h2>
+          <p class="text-secondary text-xs mt-1">Every player at grade S, ordered by M/P%.</p>
+        </div>
         <a href="/roster" class="text-sm text-secondary hover:text-cyan-300 transition-colors">
           View full roster →
         </a>
       </div>
 
+      {% if not top_performers %}
+      <div class="border border-edge bg-card rounded p-8 text-center text-secondary">
+        <p>No player has reached grade S yet.</p>
+      </div>
+      {% else %}
       <div class="border border-edge bg-card rounded overflow-hidden">
         <table class="w-full text-sm">
           <thead class="bg-elevated text-xs text-muted uppercase tracking-wider">
@@ -101,6 +109,7 @@
           </tbody>
         </table>
       </div>
+      {% endif %}
     </section>
 
   {% endif %}
