@@ -64,6 +64,13 @@
     .bg-elevated { background-color: var(--color-bg-elevated); }
     .border-edge { border-color: var(--color-border); }
 
+    /* Grade palette — shared across dashboard, roster, farms. S is the only glow. */
+    [data-grade="s"] { color: #F0EEEC; text-shadow: 0 0 10px rgba(240, 238, 236, 0.55); }
+    [data-grade="a"] { color: #FFD700; }
+    [data-grade="b"] { color: #C8C8C8; }
+    [data-grade="c"] { color: #CD7F32; }
+    [data-grade="d"] { color: #475569; }
+
     .starfield {
       position: fixed;
       inset: 0;

@@ -1,38 +1,179 @@
 {% extends "base.html" %}
 {% block title %}Roster · Eternal Vanguard{% endblock %}
 
-{% set is_staff = user and user.role == 'staff' %}
+{% set is_staff = user and user.role in ['staff', 'owner'] %}
+
+{% block head_extra %}
+<style>
+  /* ------------------------------------------------------------------
+     Filters bar — refined inputs, restrained buttons.
+     ------------------------------------------------------------------ */
+  .field-input,
+  .field-select {
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    border-radius: 2px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .field-input::placeholder { color: var(--color-text-muted); }
+  .field-input:focus,
+  .field-select:focus {
+    outline: none;
+    border-color: var(--color-cyan);
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.25);
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 2px;
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+    transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
+    border: 1px solid var(--color-border);
+    background-color: transparent;
+    color: var(--color-text-primary);
+  }
+  .btn-primary {
+    border-color: rgba(34, 211, 238, 0.45);
+    color: var(--color-cyan);
+  }
+  .btn-primary:hover {
+    border-color: var(--color-cyan);
+    background-color: rgba(34, 211, 238, 0.08);
+  }
+  .btn-ghost { color: var(--color-text-secondary); }
+  .btn-ghost:hover {
+    border-color: var(--color-ring);
+    color: var(--color-text-primary);
+  }
+
+  .check-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 2px;
+    background-color: var(--color-bg-card);
+    color: var(--color-text-secondary);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: border-color 150ms ease, color 150ms ease;
+  }
+  .check-pill:hover { border-color: var(--color-ring); color: var(--color-text-primary); }
+  .check-pill input { accent-color: var(--color-cyan); }
+
+  /* ------------------------------------------------------------------
+     Roster grid — sticky thead, sticky player column, click highlight.
+     ------------------------------------------------------------------ */
+  .roster-shell {
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-card);
+    border-radius: 2px;
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+  .roster-grid {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    font-feature-settings: 'tnum' 1;
+  }
+  .roster-grid thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--color-bg-elevated);
+    color: var(--color-text-muted);
+    font-weight: 500;
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .roster-grid thead th a {
+    color: inherit;
+    transition: color 150ms ease;
+  }
+  .roster-grid thead th a:hover { color: var(--color-cyan); }
+  .roster-grid tbody td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .roster-grid tbody tr:last-child td { border-bottom: 0; }
+  .roster-grid tbody tr { cursor: pointer; transition: background-color 120ms ease; }
+  .roster-grid tbody tr:hover td { background-color: rgba(24, 34, 57, 0.45); }
+  .roster-grid tbody tr:hover td.col-pin { background-color: #131A2D; }
+
+  /* Sticky leading columns: # + Player */
+  .roster-grid th.col-pin,
+  .roster-grid td.col-pin {
+    position: sticky;
+    z-index: 5;
+    background-color: var(--color-bg-card);
+  }
+  .roster-grid thead th.col-pin { z-index: 15; background-color: var(--color-bg-elevated); }
+  .roster-grid .col-pin-1 { left: 0; min-width: 2.5rem; }
+  .roster-grid .col-pin-2 { left: 2.5rem; box-shadow: 1px 0 0 var(--color-border); }
+
+  /* Selected row — cyan tint that survives the sticky columns. */
+  .roster-grid tbody tr.is-selected td { background-color: rgba(34, 211, 238, 0.06); }
+  .roster-grid tbody tr.is-selected td.col-pin { background-color: #14253A; }
+  .roster-grid tbody tr.is-selected td.col-pin-1 { box-shadow: inset 2px 0 0 var(--color-cyan); }
+  .roster-grid tbody tr.is-selected td.col-pin-2 { box-shadow: 1px 0 0 var(--color-cyan); }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="max-w-full mx-auto px-6 py-12" data-page="roster" data-role="{{ user.role }}">
 
+  {# ============================================================ HERO #}
   <section data-section="hero" class="mb-8">
-    <p class="text-sm text-secondary uppercase tracking-wider mb-2">
-      Kingdom {{ kingdom }}{% if season %} · {{ season.name }}{% endif %}
-    </p>
-    <h1 class="font-display text-4xl mb-2">Full roster</h1>
+    <div class="flex items-center gap-2 mb-3 text-xs tracking-[0.12em] uppercase">
+      <span class="text-secondary">Kingdom {{ kingdom }}</span>
+      {% if season %}
+        <span class="text-muted">·</span>
+        <span class="text-gold">{{ season.name }}</span>
+      {% endif %}
+    </div>
+    <h1 class="font-display text-4xl tracking-wide leading-tight mb-2">Full roster</h1>
     <p class="text-secondary text-sm">
       {% if filtered_count == total_count %}
-        Showing all <span data-field="filtered-count">{{ filtered_count }}</span> scored members
+        Showing all
+        <span class="font-mono text-primary" data-field="filtered-count">{{ filtered_count }}</span>
+        scored members.
       {% else %}
-        Showing <span data-field="filtered-count">{{ filtered_count }}</span> of
-        <span data-field="total-count">{{ total_count }}</span> scored members
+        Showing
+        <span class="font-mono text-primary" data-field="filtered-count">{{ filtered_count }}</span>
+        of
+        <span class="font-mono text-muted" data-field="total-count">{{ total_count }}</span>
+        scored members.
       {% endif %}
     </p>
   </section>
 
+  {# ========================================================= FILTERS #}
   <section data-section="filters" class="mb-6">
-    <form method="get" action="/roster" class="flex flex-wrap items-end gap-4">
-      <div class="flex-1 min-w-[200px]">
-        <label for="q" class="block text-xs text-muted uppercase tracking-wider mb-1">Search</label>
+    <form method="get" action="/roster" class="flex flex-wrap items-end gap-3">
+      <div class="flex-1 min-w-[220px]">
+        <label for="q" class="block text-[11px] text-muted uppercase tracking-[0.14em] mb-1.5">Search</label>
         <input id="q" name="q" type="text" value="{{ filters.q }}" placeholder="Operator name"
-               class="w-full px-3 py-2 bg-card border border-edge rounded text-primary text-sm">
+               class="field-input w-full">
       </div>
 
       <div>
-        <label for="grade" class="block text-xs text-muted uppercase tracking-wider mb-1">Grade</label>
-        <select id="grade" name="grade"
-                class="px-3 py-2 bg-card border border-edge rounded text-primary text-sm">
+        <label for="grade" class="block text-[11px] text-muted uppercase tracking-[0.14em] mb-1.5">Grade</label>
+        <select id="grade" name="grade" class="field-select">
           <option value="" {% if filters.grade == "" %}selected{% endif %}>All</option>
           {% for g in ['S', 'A', 'B', 'C', 'D'] %}
             <option value="{{ g }}" {% if filters.grade == g %}selected{% endif %}>{{ g }}</option>
@@ -41,26 +182,19 @@
       </div>
 
       {% if is_staff %}
-      <div class="flex items-center gap-2" data-staff-only="farms-toggle">
+      <label class="check-pill" data-staff-only="farms-toggle">
         <input id="farms" name="farms" type="checkbox" value="1"
-               {% if filters.include_farms %}checked{% endif %}
-               class="bg-card border border-edge rounded">
-        <label for="farms" class="text-sm text-secondary">Include farms</label>
-      </div>
+               {% if filters.include_farms %}checked{% endif %}>
+        Include farms
+      </label>
       {% endif %}
 
       <input type="hidden" name="sort" value="{{ filters.sort }}">
       <input type="hidden" name="order" value="{{ filters.order }}">
 
-      <div class="flex gap-2">
-        <button type="submit"
-                class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded transition-colors text-sm">
-          Apply
-        </button>
-        <a href="/roster"
-           class="px-4 py-2 border border-edge hover:border-cyan-400 hover:text-cyan-300 rounded transition-colors text-sm">
-          Reset
-        </a>
+      <div class="flex gap-2 ml-auto">
+        <button type="submit" class="btn-primary">Apply</button>
+        <a href="/roster" class="btn-ghost">Reset</a>
       </div>
     </form>
   </section>
@@ -74,84 +208,78 @@
     {%- set new_order = 'asc' if (filters.sort == col and filters.order == 'desc') else 'desc' -%}
     {%- set sort_qs = 'sort=' ~ col ~ '&order=' ~ new_order -%}
     {%- set full_qs = ([base_qs, sort_qs] | select | join('&')) -%}
-    <a href="/roster?{{ full_qs }}" class="hover:text-cyan-300 transition-colors">
-      {{ label }}
-      {% if filters.sort == col %}
-        <span class="font-mono" data-field="sort-indicator">{{ '↓' if filters.order == 'desc' else '↑' }}</span>
-      {% endif %}
+    <a href="/roster?{{ full_qs }}">
+      {{ label }}{% if filters.sort == col %}<span class="ml-1 text-cyan" data-field="sort-indicator">{{ '↓' if filters.order == 'desc' else '↑' }}</span>{% endif %}
     </a>
   {%- endmacro %}
 
+  {# ============================================================ GRID #}
   <section data-section="grid">
-    <div class="border border-edge bg-card rounded overflow-x-auto">
+    <div class="roster-shell">
       {% if rows %}
-      <table class="w-full text-sm whitespace-nowrap" data-table="roster">
-        <thead class="bg-elevated text-xs text-muted uppercase tracking-wider sticky top-0">
+      <table class="roster-grid" data-table="roster">
+        <thead>
           <tr>
-            <th class="px-3 py-3 text-left">#</th>
-            <th class="px-3 py-3 text-left"  data-col="name">{{ sort_link('name', 'Player') }}</th>
-            <th class="px-3 py-3 text-center" data-col="grade">{{ sort_link('grade', 'Grade') }}</th>
+            <th class="col-pin col-pin-1 text-left">#</th>
+            <th class="col-pin col-pin-2 text-left" data-col="name">{{ sort_link('name', 'Player') }}</th>
+            <th class="text-center" data-col="grade">{{ sort_link('grade', 'Grade') }}</th>
 
             {% if is_staff %}
-            <th class="px-3 py-3 text-center" data-col="status" data-staff-only="true">Status</th>
+            <th class="text-center" data-col="status" data-staff-only="true">Status</th>
             {% endif %}
 
-            <th class="px-3 py-3 text-right"  data-col="mp">{{ sort_link('mp', 'M/P %') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="merits_total">{{ sort_link('merits_total', 'Merits') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="power">{{ sort_link('power', 'Power') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="peak_power">{{ sort_link('peak_power', 'Peak power') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="deaths">{{ sort_link('deaths', 'Deaths T4/T5') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="healing">{{ sort_link('healing', 'Healing T4/T5') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="destruction">{{ sort_link('destruction', 'Destruction') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="build_time">{{ sort_link('build_time', 'Build time') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="behemoth">{{ sort_link('behemoth', 'Behemoths') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="harvest">{{ sort_link('harvest', 'Harvest') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="donations">{{ sort_link('donations', 'Donations') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="merits_infantry">{{ sort_link('merits_infantry', 'Inf merits') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="merits_cavalry">{{ sort_link('merits_cavalry', 'Cav merits') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="merits_archers">{{ sort_link('merits_archers', 'Archers merits') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="merits_magic">{{ sort_link('merits_magic', 'Mage merits') }}</th>
-            <th class="px-3 py-3 text-right"  data-col="merits_other">{{ sort_link('merits_other', 'Other merits') }}</th>
+            <th class="text-right" data-col="mp">{{ sort_link('mp', 'M/P %') }}</th>
+            <th class="text-right" data-col="merits_total">{{ sort_link('merits_total', 'Merits') }}</th>
+            <th class="text-right" data-col="power">{{ sort_link('power', 'Power') }}</th>
+            <th class="text-right" data-col="peak_power">{{ sort_link('peak_power', 'Peak power') }}</th>
+            <th class="text-right" data-col="deaths">{{ sort_link('deaths', 'Deaths T4/T5') }}</th>
+            <th class="text-right" data-col="healing">{{ sort_link('healing', 'Healing T4/T5') }}</th>
+            <th class="text-right" data-col="destruction">{{ sort_link('destruction', 'Destruction') }}</th>
+            <th class="text-right" data-col="build_time">{{ sort_link('build_time', 'Build time') }}</th>
+            <th class="text-right" data-col="behemoth">{{ sort_link('behemoth', 'Behemoths') }}</th>
+            <th class="text-right" data-col="harvest">{{ sort_link('harvest', 'Harvest') }}</th>
+            <th class="text-right" data-col="donations">{{ sort_link('donations', 'Donations') }}</th>
+            <th class="text-right" data-col="merits_infantry">{{ sort_link('merits_infantry', 'Inf merits') }}</th>
+            <th class="text-right" data-col="merits_cavalry">{{ sort_link('merits_cavalry', 'Cav merits') }}</th>
+            <th class="text-right" data-col="merits_archers">{{ sort_link('merits_archers', 'Archers merits') }}</th>
+            <th class="text-right" data-col="merits_magic">{{ sort_link('merits_magic', 'Mage merits') }}</th>
+            <th class="text-right" data-col="merits_other">{{ sort_link('merits_other', 'Other merits') }}</th>
 
             {% if is_staff %}
-            <th class="px-3 py-3 text-center" data-col="actions" data-staff-only="true">Actions</th>
+            <th class="text-center" data-col="actions" data-staff-only="true">Actions</th>
             {% endif %}
           </tr>
         </thead>
         <tbody>
           {% for row in rows %}
-          <tr data-rank="{{ loop.index }}" class="border-t border-edge">
-            <td class="px-3 py-2 font-mono text-muted text-xs">{{ loop.index }}</td>
-            <td class="px-3 py-2">{{ row.name }}</td>
-            <td class="px-3 py-2 text-center font-mono" data-grade="{{ row.grade|lower }}">{{ row.grade }}</td>
+          <tr data-rank="{{ loop.index }}">
+            <td class="col-pin col-pin-1 font-mono text-muted text-xs">{{ loop.index }}</td>
+            <td class="col-pin col-pin-2 text-primary">{{ row.name }}</td>
+            <td class="text-center font-mono font-semibold" data-grade="{{ row.grade|lower }}">{{ row.grade }}</td>
 
             {% if is_staff %}
-            <td class="px-3 py-2 text-center font-mono text-muted" data-staff-only="true">
-              {# Status will be wired in when staff actions land #}
-              —
-            </td>
+            <td class="text-center text-muted" data-staff-only="true">—</td>
             {% endif %}
 
-            <td class="px-3 py-2 text-right font-mono">{{ "%.1f"|format(row.mp_ratio) }}%</td>
-            <td class="px-3 py-2 text-right font-mono">{{ row.merits_total_short }}</td>
-            <td class="px-3 py-2 text-right font-mono">{{ row.power_short }}</td>
-            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.peak_power_short }}</td>
-            <td class="px-3 py-2 text-right font-mono">{{ row.deaths_t45_short }}</td>
-            <td class="px-3 py-2 text-right font-mono">{{ row.healing_t45_short }}</td>
-            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.destruction_time_short }}</td>
-            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.build_time_short }}</td>
-            <td class="px-3 py-2 text-right font-mono">{{ row.behemoth_victories }}</td>
-            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.harvest_short }}</td>
-            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.alliance_donations_short }}</td>
-            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_infantry_short }}</td>
-            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_cavalry_short }}</td>
-            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_archers_short }}</td>
-            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_magic_short }}</td>
-            <td class="px-3 py-2 text-right font-mono text-muted">{{ row.merits_other_short }}</td>
+            <td class="text-right font-mono text-cyan">{{ "%.1f"|format(row.mp_ratio) }}%</td>
+            <td class="text-right font-mono">{{ row.merits_total_short }}</td>
+            <td class="text-right font-mono">{{ row.power_short }}</td>
+            <td class="text-right font-mono text-muted">{{ row.peak_power_short }}</td>
+            <td class="text-right font-mono">{{ row.deaths_t45_short }}</td>
+            <td class="text-right font-mono">{{ row.healing_t45_short }}</td>
+            <td class="text-right font-mono text-muted">{{ row.destruction_time_short }}</td>
+            <td class="text-right font-mono text-muted">{{ row.build_time_short }}</td>
+            <td class="text-right font-mono">{{ row.behemoth_victories }}</td>
+            <td class="text-right font-mono text-muted">{{ row.harvest_short }}</td>
+            <td class="text-right font-mono text-muted">{{ row.alliance_donations_short }}</td>
+            <td class="text-right font-mono text-muted">{{ row.merits_infantry_short }}</td>
+            <td class="text-right font-mono text-muted">{{ row.merits_cavalry_short }}</td>
+            <td class="text-right font-mono text-muted">{{ row.merits_archers_short }}</td>
+            <td class="text-right font-mono text-muted">{{ row.merits_magic_short }}</td>
+            <td class="text-right font-mono text-muted">{{ row.merits_other_short }}</td>
 
             {% if is_staff %}
-            <td class="px-3 py-2 text-center" data-staff-only="true">
-              {# Actions (mark burn, add event, etc.) will land here #}
+            <td class="text-center" data-staff-only="true">
               <span class="text-muted text-xs">—</span>
             </td>
             {% endif %}
@@ -160,13 +288,16 @@
         </tbody>
       </table>
       {% else %}
-      <div class="p-8 text-center text-secondary">
+      <div class="p-12 text-center">
         {% if season is none %}
-          <p>No active season.</p>
+          <p class="font-display text-xl text-secondary mb-1">No active season</p>
+          <p class="text-muted text-sm">Awaiting the next season opening.</p>
         {% elif snapshot is none %}
-          <p>No cumulative snapshot ingested yet.</p>
+          <p class="font-display text-xl text-secondary mb-1">No cumulative snapshot yet</p>
+          <p class="text-muted text-sm">Upload a cumulative export to populate the roster.</p>
         {% else %}
-          <p>No member matches the current filters.</p>
+          <p class="font-display text-xl text-secondary mb-1">No matches</p>
+          <p class="text-muted text-sm">Adjust the filters or reset to see the full roster.</p>
         {% endif %}
       </div>
       {% endif %}
@@ -174,4 +305,25 @@
   </section>
 
 </div>
+
+<script>
+  (function () {
+    const table = document.querySelector('[data-table="roster"]');
+    if (!table) return;
+    const rows = table.querySelectorAll('tbody tr[data-rank]');
+
+    rows.forEach((row) => {
+      row.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const wasSelected = row.classList.contains('is-selected');
+        rows.forEach((r) => r.classList.remove('is-selected'));
+        if (!wasSelected) row.classList.add('is-selected');
+      });
+    });
+
+    document.addEventListener('click', () => {
+      rows.forEach((r) => r.classList.remove('is-selected'));
+    });
+  })();
+</script>
 {% endblock %}

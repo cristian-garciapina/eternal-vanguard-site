@@ -4,17 +4,8 @@
 {% block head_extra %}
 <style>
   /* ------------------------------------------------------------------
-     Grade palette — used wherever data-grade="x" appears.
-     S carries the only glow in the product (signature accent).
-     ------------------------------------------------------------------ */
-  [data-grade="s"] { color: #F0EEEC; text-shadow: 0 0 10px rgba(240, 238, 236, 0.55); }
-  [data-grade="a"] { color: #FFD700; }
-  [data-grade="b"] { color: #C8C8C8; }
-  [data-grade="c"] { color: #CD7F32; }
-  [data-grade="d"] { color: #475569; }
-
-  /* ------------------------------------------------------------------
      Donut chart — the alliance's visual signature.
+     Grade colors come from base.html [data-grade] palette.
      ------------------------------------------------------------------ */
   .donut-track  { stroke: #182239; }
   .donut-seg    { transition: stroke-width 200ms ease; }
