@@ -160,6 +160,7 @@ def _row_to_dict(score: Score, member: Member, stat: Stat) -> dict:
 
         # Scoring outputs
         "grade": score.grade or "—",
+        "status": score.status or "—",
         "mp_ratio": score.mp_ratio,
 
         # Power
