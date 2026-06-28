@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Create account · Eternal Vanguard{% endblock %}
+{% block content %}
+<section class="max-w-md mx-auto px-6 py-12">
+  <h1 class="font-display text-3xl mb-2">Create account</h1>
+  <p class="text-sm text-secondary mb-8">
+    Members can sign up directly. Officer accounts (R4/R5) require staff approval.
+  </p>
+
+  {% if error %}
+  <div role="alert" class="mb-4 p-3 border border-red-700 bg-red-900/30 text-red-200 text-sm rounded">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <form method="post" action="/signup" class="space-y-4">
+    <div>
+      <label for="username" class="block text-sm text-secondary mb-1">Username (used to log in)</label>
+      <input id="username" name="username" type="text" required autocomplete="username"
+             value="{{ form.username }}"
+             class="w-full px-3 py-2 bg-card border border-edge rounded text-primary">
+    </div>
+
+    <div>
+      <label for="in_game_name" class="block text-sm text-secondary mb-1">In-game name</label>
+      <input id="in_game_name" name="in_game_name" type="text" required
+             value="{{ form.in_game_name }}"
+             class="w-full px-3 py-2 bg-card border border-edge rounded text-primary">
+    </div>
+
+    <div>
+      <label for="character_id" class="block text-sm text-secondary mb-1">Player ID (in-game number)</label>
+      <input id="character_id" name="character_id" type="text" inputmode="numeric" required
+             value="{{ form.character_id }}"
+             class="w-full px-3 py-2 bg-card border border-edge rounded text-primary font-mono">
+    </div>
+
+    <div>
+      <label for="rank" class="block text-sm text-secondary mb-1">Alliance rank</label>
+      <select id="rank" name="rank" required
+              class="w-full px-3 py-2 bg-card border border-edge rounded text-primary">
+        <option value="" disabled {% if not form.rank %}selected{% endif %}>Select your rank</option>
+        {% for r in ['R1', 'R2', 'R3', 'R4', 'R5'] %}
+          <option value="{{ r }}" {% if form.rank == r %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+      </select>
+      <p class="text-xs text-muted mt-1">R4/R5 require staff approval before activation.</p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label for="server" class="block text-sm text-secondary mb-1">Server</label>
+        <input id="server" name="server" type="text" inputmode="numeric" required
+               value="{{ form.server }}"
+               class="w-full px-3 py-2 bg-card border border-edge rounded text-primary font-mono">
+      </div>
+      <div>
+        <label for="alliance_tag" class="block text-sm text-secondary mb-1">Alliance tag</label>
+        <input id="alliance_tag" name="alliance_tag" type="text" required maxlength="16"
+               value="{{ form.alliance_tag }}"
+               class="w-full px-3 py-2 bg-card border border-edge rounded text-primary font-mono">
+      </div>
+    </div>
+
+    <div>
+      <label for="password" class="block text-sm text-secondary mb-1">Password (10+ chars)</label>
+      <input id="password" name="password" type="password" required autocomplete="new-password"
+             minlength="10"
+             class="w-full px-3 py-2 bg-card border border-edge rounded text-primary">
+    </div>
+    <div>
+      <label for="password_confirm" class="block text-sm text-secondary mb-1">Confirm password</label>
+      <input id="password_confirm" name="password_confirm" type="password" required autocomplete="new-password"
+             minlength="10"
+             class="w-full px-3 py-2 bg-card border border-edge rounded text-primary">
+    </div>
+
+    <button type="submit"
+            class="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded transition-colors">
+      Create account
+    </button>
+  </form>
+
+  <p class="text-sm text-secondary mt-6">
+    Already have an account?
+    <a href="/login" class="text-cyan-400 hover:text-cyan-300">Sign in</a>
+  </p>
+</section>
+{% endblock %}
