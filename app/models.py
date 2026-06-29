@@ -428,3 +428,32 @@ class UserSession(Base):
     __table_args__ = (
         Index("ix_session_expires", "expires_at"),
     )
+
+
+
+class Application(Base):
+    """Recruitment application submitted via the public /apply form.
+
+    Reviewed by staff via /staff/applications. Status starts at 'new'
+    and is updated by staff (new | reviewing | accepted | rejected).
+    """
+
+    __tablename__ = "applications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    in_game_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    player_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    current_alliance: Mapped[Optional[str]] = mapped_column(String(64))
+    server: Mapped[int] = mapped_column(Integer, nullable=False)
+    motivation: Mapped[str] = mapped_column(Text, nullable=False)
+    discord_handle: Mapped[Optional[str]] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    status: Mapped[str] = mapped_column(String(16), default="new", nullable=False)
+    reviewed_by: Mapped[Optional[str]] = mapped_column(String(64))
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    __table_args__ = (
+        Index("ix_app_status", "status"),
+        Index("ix_app_created", "created_at"),
+    )

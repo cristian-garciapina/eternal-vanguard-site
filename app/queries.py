@@ -354,11 +354,26 @@ def count_farms(db: Session, season_id: int, snapshot_id: int) -> int:
     )
 
 
+FARMS_SORTABLE_COLUMNS: dict[str, object] = {
+    "name": Member.current_name,
+    "start_power": Score.start_power,
+    "power": Stat.power,
+    "behemoth": Stat.behemoth_victories,
+    "donations": Stat.alliance_donations,
+}
+
+
 def get_farm_accounts(
-    db: Session, season_id: int, snapshot_id: int
+    db: Session,
+    season_id: int,
+    snapshot_id: int,
+    *,
+    search: Optional[str] = None,
+    sort: str = "start_power",
+    order: str = "desc",
 ) -> list[dict]:
-    """All farm accounts for the snapshot, sorted by start power desc."""
-    rows = db.execute(
+    """All farm accounts for the snapshot, with name search and sortable columns."""
+    stmt = (
         select(Score, Member, Stat)
         .join(Member, Score.character_id == Member.character_id)
         .join(
@@ -371,9 +386,19 @@ def get_farm_accounts(
         .where(Score.season_id == season_id)
         .where(Score.snapshot_id == snapshot_id)
         .where(Score.is_farm_account == True)
-        .order_by(Score.start_power.desc())
-    ).all()
+    )
 
+    if search:
+        like = f"%{search.strip()}%"
+        stmt = stmt.where(Member.current_name.ilike(like))
+
+    sort_col = FARMS_SORTABLE_COLUMNS.get(sort, Score.start_power)
+    if order.lower() == "asc":
+        stmt = stmt.order_by(sort_col.asc().nulls_last())
+    else:
+        stmt = stmt.order_by(sort_col.desc().nulls_last())
+
+    rows = db.execute(stmt).all()
     return [_row_to_dict(score, member, stat) for score, member, stat in rows]
 
 

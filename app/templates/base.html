@@ -122,11 +122,11 @@
 
   <header class="relative z-10 border-b border-edge" data-component="topbar">
     <nav class="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
-      <a href="/" class="font-display text-2xl tracking-wider" data-nav="wordmark">
+      <a href="/" class="font-display text-xl tracking-wider whitespace-nowrap" data-nav="wordmark">
         Eternal <span class="text-gold">Vanguard</span>
       </a>
 
-      <ul class="hidden md:flex items-center gap-8 text-sm" data-nav="primary">
+      <ul class="hidden lg:flex items-center gap-6 text-sm" data-nav="primary">
         <li><a href="/" class="hover:text-cyan-300 transition-colors">Home</a></li>
         {% if user %}
           <li><a href="/dashboard" class="hover:text-cyan-300 transition-colors">Dashboard</a></li>
@@ -134,6 +134,7 @@
           <li><a href="/farms" class="hover:text-cyan-300 transition-colors">Farms</a></li>
           <li><a href="/profile" class="hover:text-cyan-300 transition-colors">Profile</a></li>
           {% if user.role in ['staff', 'owner'] %}
+          <li><a href="/staff/applications" class="hover:text-cyan-300 transition-colors">Apps</a></li>
           <li><a href="/staff/registrations" class="hover:text-cyan-300 transition-colors">Pending</a></li>
           <li><a href="/staff/users" class="hover:text-cyan-300 transition-colors">Users</a></li>
           <li><a href="/staff/settings" class="hover:text-cyan-300 transition-colors">Settings</a></li>
@@ -141,7 +142,7 @@
         {% endif %}
       </ul>
 
-      <div class="flex items-center gap-3" data-nav="session">
+      <div class="hidden lg:flex items-center gap-3" data-nav="session">
         {% if user %}
           <span class="text-sm text-secondary hidden sm:inline">
             Logged in as <span class="text-primary font-medium" data-field="username">{{ user.username }}</span>
@@ -166,7 +167,66 @@
           </a>
         {% endif %}
       </div>
+    
+      <!-- Hamburger (visible below lg) -->
+      <button type="button"
+              class="lg:hidden inline-flex items-center justify-center p-2 border border-edge rounded"
+              data-action="open-menu"
+              aria-label="Open menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
     </nav>
+
+    <!-- Mobile drawer -->
+    <div class="lg:hidden hidden" data-component="mobile-drawer">
+      <div class="border-t border-edge px-6 py-4 bg-card ml-auto max-w-xs">
+        <ul class="flex flex-col gap-2 text-sm" data-nav="mobile-primary">
+          <li><a href="/" class="block px-2 py-2 hover:text-cyan-300 transition-colors">Home</a></li>
+          {% if user %}
+            <li><a href="/dashboard" class="block px-2 py-2 hover:text-cyan-300 transition-colors">Dashboard</a></li>
+            <li><a href="/roster" class="block px-2 py-2 hover:text-cyan-300 transition-colors">Roster</a></li>
+            <li><a href="/farms" class="block px-2 py-2 hover:text-cyan-300 transition-colors">Farms</a></li>
+            <li><a href="/profile" class="block px-2 py-2 hover:text-cyan-300 transition-colors">Profile</a></li>
+            {% if user.role in ['staff', 'owner'] %}
+              <li><a href="/staff/registrations" class="block px-2 py-2 hover:text-cyan-300 transition-colors">Pending</a></li>
+              <li><a href="/staff/users" class="block px-2 py-2 hover:text-cyan-300 transition-colors">Users</a></li>
+              <li><a href="/staff/seasons" class="block px-2 py-2 hover:text-cyan-300 transition-colors">Seasons</a></li>
+              <li><a href="/staff/settings" class="block px-2 py-2 hover:text-cyan-300 transition-colors">Settings</a></li>
+            {% endif %}
+          {% endif %}
+        </ul>
+
+        <div class="mt-4 pt-4 border-t border-edge">
+          {% if user %}
+            <p class="text-sm text-secondary mb-3">
+              Logged in as <span class="text-primary font-medium">{{ user.username }}</span>
+              {% if user.role == 'owner' %}
+                <span class="ml-1 text-xs uppercase tracking-wider text-violet-400">owner</span>
+              {% elif user.role == 'staff' %}
+                <span class="ml-1 text-xs uppercase tracking-wider text-gold">staff</span>
+              {% endif %}
+            </p>
+            <form method="post" action="/logout">
+              <button type="submit"
+                      class="w-full text-sm px-4 py-2 border border-edge rounded hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                Log out
+              </button>
+            </form>
+          {% else %}
+            <a href="/login"
+               class="block text-center text-sm px-4 py-2 border border-edge rounded hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+              Log in
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
   </header>
 
   <main class="relative z-10">
@@ -179,5 +239,16 @@
       <span class="font-mono text-xs">v0.4.0</span>
     </div>
   </footer>
+
+  <script>
+    (function () {
+      const btn = document.querySelector('[data-action="open-menu"]');
+      const drawer = document.querySelector('[data-component="mobile-drawer"]');
+      if (!btn || !drawer) return;
+      btn.addEventListener('click', () => {
+        drawer.classList.toggle('hidden');
+      });
+    })();
+  </script>
 </body>
 </html>

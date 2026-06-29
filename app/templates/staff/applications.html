@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Applications · Eternal Vanguard{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-6 py-12" data-page="staff-applications">
+
+  <section data-section="hero" class="mb-8">
+    <p class="text-sm text-secondary uppercase tracking-wider mb-2">Staff · Kingdom {{ kingdom }}</p>
+    <h1 class="font-display text-4xl mb-2">Applications</h1>
+    <p class="text-secondary text-sm">
+      Recruitment applications submitted via the public form.
+    </p>
+  </section>
+
+  <section data-section="filters" class="mb-6 flex flex-wrap gap-2">
+    {% set tabs = [('', 'All'), ('new', 'New'), ('reviewing', 'Reviewing'), ('accepted', 'Accepted'), ('rejected', 'Rejected')] %}
+    {% for value, label in tabs %}
+      {% set is_active = current_filter == value %}
+      <a href="/staff/applications{% if value %}?status={{ value }}{% endif %}"
+         class="px-3 py-1.5 text-xs uppercase tracking-wider rounded-sm border transition-colors
+                {% if is_active %}border-cyan-400 text-cyan-300 bg-cyan-900/20{% else %}border-edge text-secondary hover:text-primary{% endif %}">
+        {{ label }}
+        {% if value and counts.get(value, 0) > 0 %}
+          <span class="ml-1 font-mono text-muted">{{ counts[value] }}</span>
+        {% endif %}
+      </a>
+    {% endfor %}
+  </section>
+
+  {% if not apps %}
+    <div class="border border-edge bg-card rounded-sm p-12 text-center">
+      <p class="font-display text-xl text-secondary mb-1">No applications</p>
+      <p class="text-muted text-sm">Nothing to review for the selected filter.</p>
+    </div>
+  {% else %}
+    <div class="space-y-3">
+      {% for app in apps %}
+        <details class="border border-edge bg-card rounded-sm">
+          <summary class="cursor-pointer px-4 py-3 flex flex-wrap items-center gap-3 list-none">
+            <div class="flex-1 min-w-[200px]">
+              <p class="text-primary font-medium">{{ app.in_game_name }}</p>
+              <p class="text-xs text-muted font-mono">
+                ID {{ app.player_id }} · Server {{ app.server }}
+                {% if app.current_alliance %} · from <span class="text-secondary">{{ app.current_alliance }}</span>{% endif %}
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs uppercase tracking-wider px-2 py-0.5 rounded-sm font-mono
+                {% if app.status == 'new' %}text-cyan-300 border border-cyan-700{% endif %}
+                {% if app.status == 'reviewing' %}text-gold border border-amber-700{% endif %}
+                {% if app.status == 'accepted' %}text-green-300 border border-green-700{% endif %}
+                {% if app.status == 'rejected' %}text-red-300 border border-red-700{% endif %}">
+                {{ app.status }}
+              </span>
+              <span class="text-xs text-muted font-mono">{{ app.created_at.strftime('%Y-%m-%d') }}</span>
+            </div>
+          </summary>
+
+          <div class="border-t border-edge px-4 py-4 space-y-4">
+            {% if app.discord_handle %}
+              <p class="text-sm">
+                <span class="text-muted">Discord:</span>
+                <span class="text-primary font-mono">{{ app.discord_handle }}</span>
+              </p>
+            {% endif %}
+            <div>
+              <p class="text-xs text-muted uppercase tracking-wider mb-1">Motivation</p>
+              <p class="text-sm text-secondary whitespace-pre-wrap leading-relaxed">{{ app.motivation }}</p>
+            </div>
+            {% if app.notes %}
+            <div>
+              <p class="text-xs text-muted uppercase tracking-wider mb-1">Staff notes</p>
+              <p class="text-sm text-secondary whitespace-pre-wrap">{{ app.notes }}</p>
+            </div>
+            {% endif %}
+            {% if app.reviewed_by %}
+              <p class="text-xs text-muted">
+                Last reviewed by <span class="font-mono text-secondary">{{ app.reviewed_by }}</span>
+                on {{ app.reviewed_at.strftime('%Y-%m-%d %H:%M') if app.reviewed_at else '—' }}
+              </p>
+            {% endif %}
+
+            <form method="post" action="/staff/applications/{{ app.id }}/status" class="space-y-3 pt-2 border-t border-edge">
+              <div>
+                <label for="notes-{{ app.id }}" class="block text-xs text-muted uppercase tracking-wider mb-1">Update notes</label>
+                <textarea id="notes-{{ app.id }}" name="notes" rows="2"
+                          class="w-full px-3 py-2 bg-elevated border border-edge rounded-sm text-primary text-sm"
+                          placeholder="Optional note (overwrites previous)…"></textarea>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                {% for value, label, color in [('reviewing', 'Mark reviewing', 'gold'), ('accepted', 'Accept', 'green'), ('rejected', 'Reject', 'red'), ('new', 'Reopen', 'cyan')] %}
+                  <button type="submit" name="new_status" value="{{ value }}"
+                          class="text-xs px-3 py-1.5 border rounded-sm tracking-wider uppercase transition-colors
+                                 {% if color == 'green' %}border-green-700 text-green-300 hover:bg-green-900/20{% endif %}
+                                 {% if color == 'red' %}border-red-700 text-red-300 hover:bg-red-900/20{% endif %}
+                                 {% if color == 'gold' %}border-amber-700 text-gold hover:bg-amber-900/20{% endif %}
+                                 {% if color == 'cyan' %}border-cyan-700 text-cyan-300 hover:bg-cyan-900/20{% endif %}">
+                    {{ label }}
+                  </button>
+                {% endfor %}
+              </div>
+            </form>
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

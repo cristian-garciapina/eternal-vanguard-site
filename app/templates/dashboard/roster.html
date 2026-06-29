@@ -258,7 +258,19 @@
             <td class="text-center font-mono font-semibold" data-grade="{{ row.grade|lower }}">{{ row.grade }}</td>
 
             {% if is_staff %}
-            <td class="text-center text-muted" data-staff-only="true">—</td>
+            <td class="text-center font-mono text-xs" data-staff-only="true" data-status="{{ row.status|lower }}">
+              {% if row.status == 'KEEP' %}
+                <span class="text-cyan-400">KEEP</span>
+              {% elif row.status == 'WATCH' %}
+                <span class="text-gold">WATCH</span>
+              {% elif row.status == 'EXPEL' %}
+                <span class="text-red-400">EXPEL</span>
+              {% elif row.status == 'FARM' %}
+                <span class="text-muted">FARM</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
             {% endif %}
 
             <td class="text-right font-mono text-cyan">{{ "%.1f"|format(row.mp_ratio) }}%</td>
