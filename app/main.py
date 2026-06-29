@@ -32,6 +32,7 @@ from .staff_routes import router as staff_router
 from .profile_routes import router as profile_router
 from .settings_routes import router as settings_router
 from .ingest import router as ingest_router
+from .recruitment_routes import router as recruitment_router
 from .models import User
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -52,6 +53,7 @@ app.include_router(signup_router)
 app.include_router(staff_router)
 app.include_router(profile_router)
 app.include_router(settings_router)
+app.include_router(recruitment_router)
 
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -88,6 +90,9 @@ async def landing(
 @app.get("/farms", response_class=HTMLResponse)
 async def farms(
     request: Request,
+    q: str = "",
+    sort: str = "start_power",
+    order: str = "desc",
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
@@ -99,6 +104,7 @@ async def farms(
         "snapshot": None,
         "farms": [],
         "total": 0,
+        "filters": {"q": "", "sort": "start_power", "order": "desc"},
     }
 
     season = queries.get_active_season(db)
@@ -115,7 +121,13 @@ async def farms(
         )
     context["snapshot"] = snapshot
     context["total"] = queries.count_farms(db, season.id, snapshot.id)
-    context["farms"] = queries.get_farm_accounts(db, season.id, snapshot.id)
+    context["farms"] = queries.get_farm_accounts(
+        db, season.id, snapshot.id,
+        search=q or None,
+        sort=sort,
+        order=order,
+    )
+    context["filters"] = {"q": q, "sort": sort, "order": order}
 
     return templates.TemplateResponse(
         request=request, name="dashboard/farms.html", context=context
